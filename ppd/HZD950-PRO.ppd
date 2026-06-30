@@ -92,12 +92,19 @@
 *OrderDependency: 50 AnySetup *Darkness
 *DefaultDarkness: 8
 *Darkness 0/0 (lightest): ""
+*Darkness 1/1: ""
 *Darkness 2/2: ""
+*Darkness 3/3: ""
 *Darkness 4/4: ""
+*Darkness 5/5: ""
 *Darkness 6/6: ""
+*Darkness 7/7: ""
 *Darkness 8/8 (default): ""
+*Darkness 9/9: ""
 *Darkness 10/10: ""
+*Darkness 11/11: ""
 *Darkness 12/12: ""
+*Darkness 13/13: ""
 *Darkness 14/14: ""
 *Darkness 15/15 (darkest): ""
 *CloseUI: *Darkness
