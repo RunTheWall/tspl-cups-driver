@@ -51,6 +51,32 @@ sudo ./install.sh          # builds the filter, installs filter + backend + PPD,
 Then print to the **HZD950** queue from anything. Share it on your network with
 `sudo cupsctl --remote-any --share-printers` (or via the CUPS web UI at `http://<host>:631`).
 
+## Two queues: crisp labels + photo/Gathering
+
+**Print Mode** is a halftone choice, and the right one depends on content:
+
+- **Default** (threshold) — crisp solid black; best for **text, barcodes, QR** (most shipping labels).
+- **Gathering** (clustered-dot dither) — renders **greys/photos**; needed for things like a faint grey
+  QR watermark that threshold would otherwise drop. The trade-off: it softens text/barcode edges.
+
+The filter honours each queue's **PPD default**, so the clean setup is **two queues on the same
+printer** — pick whichever fits the job:
+
+```bash
+# 1) crisp labels (Default / threshold)
+sudo lpadmin -p HZD950 -E -v hzd950:auto -P /usr/share/ppd/hzd950/HZD950-PRO.ppd \
+  -o printer-is-shared=true -o PrintMode=5 -o Darkness=8 -o PrintSpeed=50
+
+# 2) photo / Gathering (greys, watermarks, photos)
+sudo lpadmin -p HZD950-Photo -E -v hzd950:auto -P /usr/share/ppd/hzd950/HZD950-PRO.ppd \
+  -o printer-is-shared=true -o PrintMode=3 -o Darkness=7 -o PrintSpeed=20
+```
+
+Because the mode is baked into the **queue default**, this works even for clients that can't show the
+Print Mode menu (e.g. macOS AirPrint / IPP-Everywhere) — they just pick the right queue and the Pi
+applies the rest. Option values: **PrintMode** `5`=Default `3`=Gathering `0`=None `2`=Diffusion
+`4`=ErrorDiffusion · **Darkness** `0`–`15` · **PrintSpeed** = in/sec ×10 (`20`=2″/s … `60`=6″/s).
+
 ## Is my printer really TSPL? (10-second check, prints nothing)
 
 ```bash
