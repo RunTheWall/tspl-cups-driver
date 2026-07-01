@@ -46,10 +46,11 @@ sudo ./install.sh          # builds the filter, installs filter + backend + PPD,
 ```
 
 `install.sh` needs `gcc`, `make`, and `libcups2-dev` (it will tell you if they're missing:
-`sudo apt install build-essential libcups2-dev`).
+`sudo apt install build-essential libcups2-dev`). It also turns on sharing + AirPrint and offers to
+print a welcome label ([`assets/welcome-card.png`](assets/welcome-card.png)).
 
-Then print to the **HZD950** queue from anything. Share it on your network with
-`sudo cupsctl --remote-any --share-printers` (or via the CUPS web UI at `http://<host>:631`).
+Then print to the **HZD950** queue from anything — or add it from
+[another Mac / iPhone / PC](#connect-from-another-mac--iphone--pc-no-driver-install) with no driver.
 
 ## Two queues: crisp labels + photo/Gathering
 
@@ -76,6 +77,27 @@ Because the mode is baked into the **queue default**, this works even for client
 Print Mode menu (e.g. macOS AirPrint / IPP-Everywhere) — they just pick the right queue and the Pi
 applies the rest. Option values: **PrintMode** `5`=Default `3`=Gathering `0`=None `2`=Diffusion
 `4`=ErrorDiffusion · **Darkness** `0`–`15` · **PrintSpeed** = in/sec ×10 (`20`=2″/s … `60`=6″/s).
+
+## Connect from another Mac / iPhone / PC (no driver install)
+
+The printer renders on the Pi, so **client machines never need a driver** — they just need to reach
+the shared queue. `install.sh` already turns sharing on and makes it **AirPrint-discoverable**.
+
+- **The key server-side bit** (install.sh does this for you): CUPS advertises shares with a `_cups`
+  Bonjour subtype, and the moment macOS sees `_cups` it forces a *"Generic PostScript"* driver instead
+  of driverless AirPrint. Dropping it fixes the one-click add:
+  ```
+  BrowseDNSSDSubTypes _print,_universal      # in /etc/cups/cupsd.conf, then: sudo systemctl restart cups
+  ```
+- **Mac / iPhone / iPad:** open **Add Printer** → the queue now appears as **AirPrint** → pick it. Done.
+  Default paper is already 4×6 (set server-side; a profile can't set it).
+- **One downloadable file:** double-click [`client/RTW-HZD950-airprint.mobileconfig`](client/RTW-HZD950-airprint.mobileconfig)
+  (edit the hostname first) — adds both queues, works across subnets.
+- **One script (Mac):** [`client/add-printer.command`](client/add-printer.command) runs the `lpadmin … -m everywhere` for you.
+- **Windows 10/11 / Linux:** they auto-discover the shared IPP printer (IPP Everywhere / Mopria) — add it driverless.
+
+Custom options (Gathering/Darkness/Speed) don't show in a driverless client's dialog — they ride on the
+**queue default** (that's why the [two-queue](#two-queues-crisp-labels--photogathering) split exists: pick HZD950 vs HZD950-Photo).
 
 ## Is my printer really TSPL? (10-second check, prints nothing)
 

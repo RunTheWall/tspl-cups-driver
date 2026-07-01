@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8"><title>HZD950 × Constly — welcome card designs</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;700&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Serif:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{ --ink:#000; }
+  *{ margin:0; padding:0; box-sizing:border-box; }
+  body{ font-family:'Inter',Helvetica,Arial,sans-serif; background:#9a9a9a; color:#111;
+        min-height:100vh; padding:120px 20px 60px; display:flex; flex-direction:column; align-items:center; gap:18px; }
+  .bar{ position:fixed; top:0; left:0; right:0; height:88px; background:#111; color:#fff; z-index:10;
+        display:flex; align-items:center; gap:18px; padding:0 26px; box-shadow:0 2px 14px rgba(0,0,0,.4); }
+  .bar h2{ font-family:'Bebas Neue'; font-size:30px; letter-spacing:.04em; font-weight:400; }
+  .bar select{ font:600 18px Inter; padding:11px 16px; border-radius:9px; border:0; min-width:430px; cursor:pointer; }
+  .bar .hint{ font-size:14px; opacity:.7; margin-left:auto; }
+  .name{ font:700 15px Inter; letter-spacing:.12em; text-transform:uppercase; color:#222; }
+  .stage{ width:600px; height:900px; background:#fff; box-shadow:0 14px 50px rgba(0,0,0,.45); overflow:hidden; }
+  /* every card is authored at 1200x1800 (4x6 @300dpi) and scaled 0.5 for preview */
+  .card{ width:1200px; height:1800px; transform:scale(.5); transform-origin:top left; background:#fff; color:var(--ink);
+         padding:84px; display:none; flex-direction:column; -webkit-font-smoothing:antialiased; position:relative; }
+  .card.on{ display:flex; }
+  /* ?full → render one card at native 1200x1800 (for export/print) */
+  body.full{ padding:0; background:#fff; gap:0; }
+  body.full .bar, body.full .name{ display:none; }
+  body.full .stage{ width:1200px; height:1800px; box-shadow:none; }
+  body.full .card{ transform:none; }
+  /* shared atoms */
+  .eyebrow{ font-size:27px; font-weight:800; letter-spacing:.30em; }
+  .big{ font-family:'Bebas Neue'; line-height:.84; letter-spacing:.01em; }
+  .rule{ border-top:4px solid #000; } .hair{ border-top:2px solid #000; }
+  .mono{ font-family:'JetBrains Mono',monospace; }
+  .qr{ width:300px; height:300px; image-rendering:pixelated; display:block; }
+  .url{ font-family:'Bebas Neue'; line-height:.84; }
+  b{ font-weight:800; }
+  /* ---- realistic 1-bit Constly window (rounded, real chrome, hard shadow) ---- */
+  .ed{ border:3px solid #000; border-radius:28px; overflow:hidden; background:#fff; box-shadow:15px 15px 0 #000; }
+  .ed-bar{ display:flex; align-items:center; gap:14px; padding:28px 32px 6px; position:relative; }
+  .ed-bar i{ width:19px; height:19px; border:2.5px solid #000; border-radius:50%; display:block; }
+  .ed-file{ position:absolute; left:50%; transform:translateX(-50%); font:500 23px 'IBM Plex Mono',monospace; }
+  /* inside the window = Constly's real fonts: IBM Plex Sans (text) + Plex Mono (chrome) */
+  .ed-body{ padding:40px 46px 56px 68px; font-family:'IBM Plex Sans',sans-serif; }
+  .ed-h{ font-family:'IBM Plex Sans',sans-serif; font-weight:700; font-size:62px; line-height:1.12; letter-spacing:-.015em; }
+  .ed-h .mk,.ed-p .mk{ -webkit-text-stroke:2px #000; color:#fff; }   /* hollow markdown marks */
+  .ed-ct{ display:inline-block; width:5px; height:52px; background:#000; vertical-align:-9px; margin-left:6px; }
+  .ed-p{ font-size:31px; line-height:1.55; margin-top:38px; font-weight:400; }
+  .ed-li{ font-size:30px; margin-top:26px; display:flex; align-items:center; gap:15px; }
+  .ed-li .bx{ width:30px; height:30px; border:3px solid #000; border-radius:8px; position:relative; flex:none; }
+  .ed-li .bx.x::after{ content:"✓"; position:absolute; left:4px; top:-11px; font-size:33px; font-weight:800; }
+  /* CTA block */
+  .cta{ display:flex; align-items:center; gap:46px; }
+  .scan{ font-size:28px; font-weight:800; letter-spacing:.14em; text-transform:uppercase; }
+  /* footer */
+  .foot{ display:flex; justify-content:space-between; align-items:center; font-size:23px; font-weight:700;
+         letter-spacing:.13em; border-top:2px solid #000; padding-top:18px; }
+  /* invert helper for poster */
+  .inv{ background:#000; color:#fff; } .inv .ed{ border-color:#fff; } .inv .ed-bar{ border-color:#fff; }
+  .inv .ed-bar i{ border-color:#fff; } .inv .rule,.inv .hair,.inv .foot{ border-color:#fff; }
+  .inv .ed-h .mk{ -webkit-text-stroke-color:#fff; color:#000; }
+</style></head>
+<body>
+  <div class="bar">
+    <h2>HZD950 × CONSTLY · welcome card</h2>
+    <select id="pick" onchange="show(this.value)"></select>
+    <span class="hint">4×6 · pure 1-bit · thermal-ready</span>
+  </div>
+  <div class="name" id="nm"></div>
+  <div class="stage"><div id="deck"></div></div>
+
+<script>
+const QR = "qr.png";
+// Each design returns inner HTML for a 1200x1800 .card
+const ed = (head="Markdown that becomes the page", opts={}) => `
+  <div class="ed" style="${opts.style||''}">
+    <div class="ed-bar"><i></i><i></i><i></i><span class="ed-file">${opts.file||'q3-launch-plan.md'}</span></div>
+    <div class="ed-body">
+      <div class="ed-h"><span class="mk"># </span>${head}<span class="ed-ct"></span></div>
+      <div class="ed-p">Write <span class="mk">**</span><b>bold</b><span class="mk">**</span> and the asterisks melt away the moment your cursor leaves.</div>
+      <div class="ed-li"><span class="bx x"></span>renders live, no flicker</div>
+      <div class="ed-li"><span class="bx"></span>never rewrites a byte you didn't touch</div>
+    </div>
+  </div>`;
+const ctaRow = `<div class="cta"><img class="qr" src="${QR}"><div><div class="scan">Scan to try it free</div><div class="url" style="font-size:108px">CONSTLY.COM</div></div></div>`;
+
+const designs = [
+{ n:"01 · IT PRINTS (baseline)", h:()=>`
+  <div class="eyebrow">✓&nbsp;&nbsp;SUCCESS</div>
+  <div class="big" style="font-size:172px;margin-top:8px">IT PRINTS.</div>
+  <div style="font-size:33px;font-weight:600;line-height:1.34;margin-top:22px"><b>Your HZD950-PRO now speaks Linux / Raspberry&nbsp;Pi.</b><br><span style="font-weight:400">A free CUPS driver, built &amp; maintained for free by Run&nbsp;The&nbsp;Wall.</span></div>
+  <div class="rule" style="margin:44px 0 38px"></div>
+  <div class="eyebrow" style="letter-spacing:.16em">WE BUILT IT FREE TO INTRODUCE YOU TO</div>
+  <div class="big" style="font-size:250px;margin:2px 0 0 -6px">CONSTLY</div>
+  <div style="font-size:42px;font-weight:700">the WinRAR of Markdown.</div>
+  <div style="font-size:47px;font-weight:700;font-style:italic;margin-top:40px">"Markdown that becomes the page."</div>
+  <div style="font-size:31px;line-height:1.45;margin-top:26px">A gorgeous <b>WYSIWYG editor for Mac</b> that renders as you type — and <b>never rewrites a byte you didn't touch</b>. Every feature free.</div>
+  <div style="font-size:31px;font-weight:800;margin-top:20px">$19.99 one-time. No subscription, ever.</div>
+  <div class="cta" style="margin-top:96px"><img class="qr" src="${QR}"><div><div class="scan">Scan to try it free</div><div class="url" style="font-size:108px">CONSTLY.COM</div></div></div>
+  <div class="foot" style="margin-top:auto"><span>FREE&nbsp;FOREVER</span><span>RUN&nbsp;THE&nbsp;WALL&nbsp;×&nbsp;CONSTLY</span></div>` },
+
+{ n:"02 · Editor hero (black / white) ▣", h:()=>`
+<div style="position:absolute;inset:0;display:flex;flex-direction:column">
+  <div style="background:#000;color:#fff;padding:80px 84px 64px">
+    <div class="eyebrow">RUN&nbsp;THE&nbsp;WALL&nbsp;&middot;&nbsp;FREE &amp; OPEN&nbsp;SOURCE</div>
+    <div class="big" style="font-size:190px;margin-top:16px;color:#fff">IT PRINTS.</div>
+    <div style="font-size:35px;font-weight:600;line-height:1.32;margin-top:22px">Your <b>HZD950-PRO</b> label printer now speaks <b>Linux&nbsp;/&nbsp;Raspberry&nbsp;Pi</b> — on a free, open-source CUPS driver.</div>
+  </div>
+  <div style="background:#fff;color:#000;padding:62px 84px 74px;flex:1;display:flex;flex-direction:column">
+    <div class="eyebrow" style="letter-spacing:.18em">…AND WE BUILT IT FREE TO INTRODUCE YOU TO</div>
+    <div style="margin-top:42px">${ed("Markdown that becomes the page")}</div>
+    <div style="font-size:32px;line-height:1.5;margin-top:48px"><b>Constly</b> — the WinRAR of Markdown. A gorgeous WYSIWYG editor for Mac that renders as you type. Every feature free.<br><b>$19.99 when your conscience kicks in.</b> One-time, no subscription.</div>
+    <div class="cta" style="margin-top:auto"><img class="qr" src="${QR}"><div><div class="scan">Scan to try it free</div><div class="url" style="font-size:106px">CONSTLY.COM</div></div></div>
+  </div>
+</div>` },
+
+{ n:"03 · Receipt / ticket", h:()=>`
+  <div class="mono" style="text-align:center;font-size:30px;font-weight:700;letter-spacing:.1em">RUN THE WALL</div>
+  <div class="mono" style="text-align:center;font-size:23px;margin-top:6px">HZD950-PRO · LINUX/PI DRIVER · FREE</div>
+  <div class="mono" style="font-size:26px;border-top:3px dashed #000;border-bottom:3px dashed #000;margin:26px 0;padding:18px 0;text-align:center">* * *  IT PRINTS  * * *</div>
+  <div class="mono" style="font-size:28px;line-height:1.7">
+  QTY  ITEM<br>
+  &nbsp;1   CUPS driver (ARM) ........ $0.00<br>
+  &nbsp;1   reboot-proof setup ...... $0.00<br>
+  &nbsp;1   our gratitude ........... $0.00<br>
+  ----------------------------------<br>
+  &nbsp;&nbsp;&nbsp;&nbsp;TOTAL .................. <b>$0.00</b></div>
+  <div class="mono" style="font-size:25px;border-top:3px dashed #000;margin:22px 0;padding-top:18px;line-height:1.6">Made free to introduce you to <b>CONSTLY</b> — the WinRAR of Markdown. A WYSIWYG editor for Mac that renders as you type and never rewrites a byte. $19.99 one-time, no subscription.</div>
+  <div class="cta" style="margin-top:14px"><img class="qr" src="${QR}"><div><div class="scan mono">Scan to try it</div><div class="url" style="font-size:100px">CONSTLY.COM</div></div></div>
+  <div class="mono" style="text-align:center;font-size:22px;border-top:3px dashed #000;margin-top:auto;padding-top:16px">THANK YOU · FREE FOREVER</div>` },
+
+{ n:"04 · Big QR", h:()=>`
+  <div class="eyebrow">✓ IT PRINTS · HZD950 ON LINUX/PI · FREE DRIVER BY RTW</div>
+  <div class="big" style="font-size:96px;margin-top:14px">WE MADE IT<br>FREE. SO TRY<br>OUR EDITOR.</div>
+  <img class="qr" src="${QR}" style="width:620px;height:620px;margin:46px auto 0">
+  <div class="big" style="font-size:140px;text-align:center;margin-top:30px">CONSTLY.COM</div>
+  <div style="text-align:center;font-size:34px;font-weight:700;margin-top:10px">the WinRAR of Markdown · WYSIWYG for Mac · $19.99 once</div>
+  <div class="foot" style="margin-top:auto"><span>FREE&nbsp;FOREVER</span><span>RUN&nbsp;THE&nbsp;WALL&nbsp;×&nbsp;CONSTLY</span></div>` },
+
+{ n:"05 · Swiss split + window", h:()=>`
+  <div class="eyebrow">✓&nbsp;&nbsp;SUCCESS</div>
+  <div class="big" style="font-size:150px;margin-top:6px">IT PRINTS.</div>
+  <div style="font-size:30px;font-weight:600;margin-top:14px">HZD950-PRO on Raspberry Pi — a free driver by Run The Wall.</div>
+  <div class="rule" style="margin:40px 0"></div>
+  <div style="display:flex;gap:44px;align-items:flex-start">
+    <div style="flex:1">
+      <div class="eyebrow" style="letter-spacing:.14em">NOW MEET</div>
+      <div class="big" style="font-size:150px">CONSTLY</div>
+      <div style="font-size:34px;font-weight:700;margin-top:4px">the WinRAR of Markdown.</div>
+      <div style="font-size:29px;line-height:1.45;margin-top:24px">A WYSIWYG editor for Mac that renders as you type and never rewrites a byte. Free; $19.99 once.</div>
+    </div>
+    <div style="width:420px;transform:scale(.92);transform-origin:top right">${ed("becomes the page")}</div>
+  </div>
+  <div class="cta" style="margin-top:auto"><img class="qr" src="${QR}"><div><div class="scan">Scan to try it free</div><div class="url" style="font-size:104px">CONSTLY.COM</div></div></div>` },
+
+{ n:"06 · Tagline-led + window", h:()=>`
+  <div class="eyebrow">✓ HZD950 PRINTS ON LINUX/PI · FREE DRIVER · RTW</div>
+  <div class="big" style="font-size:150px;margin-top:18px;letter-spacing:0">MARKDOWN<br>THAT BECOMES<br>THE PAGE.</div>
+  <div style="font-size:32px;font-weight:600;margin-top:24px">That's <b>Constly</b> — the free WYSIWYG Markdown editor we built this driver to introduce you to.</div>
+  <div style="margin-top:34px">${ed("becomes the page")}</div>
+  <div class="cta" style="margin-top:auto"><img class="qr" src="${QR}"><div><div class="scan">Free · $19.99 once</div><div class="url" style="font-size:104px">CONSTLY.COM</div></div></div>` },
+
+{ n:"07 · WinRAR / license stamp", h:()=>`
+  <div class="eyebrow">✓ IT PRINTS · HZD950 ON LINUX/PI</div>
+  <div class="big" style="font-size:230px;margin-top:14px">CONSTLY</div>
+  <div style="font-size:46px;font-weight:800;margin-top:2px">the WinRAR of Markdown.</div>
+  <div style="font-size:31px;line-height:1.45;margin-top:28px">Every feature works <b>forever</b> — paid or not. No expiry, no watermark, no account. After two weeks a polite dialog asks you to buy. <b>That dialog is the entire business model.</b></div>
+  <div style="border:5px solid #000;display:inline-block;padding:18px 30px;margin-top:34px;transform:rotate(-4deg)">
+    <div class="mono" style="font-size:26px;font-weight:700;letter-spacing:.1em">LICENSE</div>
+    <div class="big" style="font-size:96px">$0.00</div>
+    <div class="mono" style="font-size:22px">…until your conscience kicks in · $19.99</div>
+  </div>
+  <div class="cta" style="margin-top:auto"><img class="qr" src="${QR}"><div><div class="scan">Scan to try it free</div><div class="url" style="font-size:104px">CONSTLY.COM</div></div></div>` },
+
+{ n:"08 · Manifesto + window", h:()=>`
+  <div class="eyebrow">✓ HZD950-PRO · LINUX/PI · FREE DRIVER BY RTW</div>
+  <div class="big" style="font-size:118px;margin-top:14px">YOUR BYTES<br>ARE SACRED.</div>
+  <div style="font-size:31px;line-height:1.45;margin-top:22px">Plain text is the document; the pretty view is just a projection. <b>Constly</b> never re-wraps, reorders or "normalizes" Markdown you didn't touch — your CRLFs, your BOM, your trailing spaces all survive.</div>
+  <div style="margin-top:30px;transform:scale(.9);transform-origin:top left">${ed("becomes the page")}</div>
+  <div style="font-size:30px;font-weight:700;margin-top:26px">A free WYSIWYG editor for Mac · $19.99 one-time.</div>
+  <div class="cta" style="margin-top:auto"><img class="qr" src="${QR}"><div><div class="scan">Scan</div><div class="url" style="font-size:104px">CONSTLY.COM</div></div></div>` },
+
+{ n:"09 · Poster / inverted", h:()=>`<div class="inv" style="position:absolute;inset:0;padding:84px;display:flex;flex-direction:column">
+  <div class="eyebrow">✓ IT PRINTS · HZD950 ON LINUX/PI · FREE</div>
+  <div class="big" style="font-size:300px;line-height:.82;margin-top:auto">CONST<br>LY.</div>
+  <div style="font-size:44px;font-weight:800;margin-top:30px">the WinRAR of Markdown.</div>
+  <div style="font-size:30px;line-height:1.4;margin-top:18px;margin-bottom:auto">A gorgeous WYSIWYG editor for Mac. Free, no watermark. $19.99 once.</div>
+  <div class="cta"><img class="qr" src="${QR}" style="background:#fff;padding:14px;width:300px;height:300px"><div><div class="scan">Scan to try it free</div><div class="url" style="font-size:108px">CONSTLY.COM</div></div></div>
+</div>` },
+
+{ n:"10 · Before / after (WYSIWYG)", h:()=>`
+  <div class="eyebrow">✓ HZD950 PRINTS · FREE LINUX/PI DRIVER · RTW</div>
+  <div class="big" style="font-size:104px;margin-top:14px">SEE THE<br>MARKS MELT.</div>
+  <div style="font-size:30px;font-weight:600;margin-top:16px">That's <b>Constly</b> — Markdown that becomes the page, as you type.</div>
+  <div style="display:flex;gap:30px;margin-top:34px">
+    <div style="flex:1;border:4px solid #000;padding:26px"><div class="mono" style="font-size:24px;font-weight:700;border-bottom:2px solid #000;padding-bottom:10px;margin-bottom:16px">YOU TYPE</div>
+      <div class="mono" style="font-size:27px;line-height:1.7"># Q3 launch plan<br>**ship** it &amp;<br>- [ ] tidy<br>- [x] done</div></div>
+    <div style="flex:1;border:4px solid #000;padding:26px"><div class="mono" style="font-size:24px;font-weight:700;border-bottom:2px solid #000;padding-bottom:10px;margin-bottom:16px">YOU SEE</div>
+      <div style="font-family:'Bebas Neue';font-size:52px;line-height:.95">Q3 launch plan</div>
+      <div style="font-size:27px;margin-top:10px"><b>ship</b> it &amp;</div>
+      <div style="font-size:26px;margin-top:8px"><span class="ed-li"><span class="bx"></span></span>tidy<br><span class="ed-li"><span class="bx x"></span></span>done</div></div>
+  </div>
+  <div style="font-size:30px;font-weight:700;margin-top:30px">Free for Mac. $19.99 one-time, no subscription.</div>
+  <div class="cta" style="margin-top:auto"><img class="qr" src="${QR}"><div><div class="scan">Scan to try it free</div><div class="url" style="font-size:104px">CONSTLY.COM</div></div></div>` },
+];
+
+const deck = document.getElementById('deck'), pick = document.getElementById('pick'), nm = document.getElementById('nm');
+designs.forEach((d,i)=>{ const c=document.createElement('div'); c.className='card'; c.dataset.i=i; c.innerHTML=d.h();
+  deck.appendChild(c); const o=document.createElement('option'); o.value=i; o.textContent=d.n; pick.appendChild(o); });
+function show(i){ document.querySelectorAll('.card').forEach(c=>c.classList.toggle('on', c.dataset.i==i)); nm.textContent=designs[i].n; pick.value=i; if(!location.search) location.hash=i; }
+if(location.search.indexOf('full')>=0) document.body.classList.add('full');
+show(location.hash ? +location.hash.slice(1) : 0);
+</script>
+</body></html>

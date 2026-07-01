@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Double-click this on a Mac (or open on iPhone/iPad) to add the HZD950 label
+  printers with NO commands. It pins the printers even across subnets.
+
+  EDIT the two IPAddress values below to your Pi's .local hostname (or its IP).
+  Find it with:  ippfind   (e.g. goose-print-3.local)
+
+  Note: a profile can't set default paper size — that's already handled on the
+  Pi (media-default = 4x6). Free driver by Run The Wall — https://constly.com
+-->
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>PayloadContent</key>
+  <array>
+    <dict>
+      <key>PayloadType</key><string>com.apple.airprint</string>
+      <key>PayloadVersion</key><integer>1</integer>
+      <key>PayloadIdentifier</key><string>com.runthewall.hzd950.airprint</string>
+      <key>PayloadUUID</key><string>D11C85FA-4E24-41F2-B777-D1C4184CEB9F</string>
+      <key>PayloadDisplayName</key><string>HZD950 label printers</string>
+      <key>AirPrint</key>
+      <array>
+        <dict>
+          <key>IPAddress</key><string>goose-print-3.local</string>
+          <key>ResourcePath</key><string>printers/HZD950</string>
+          <key>Port</key><integer>631</integer>
+        </dict>
+        <dict>
+          <key>IPAddress</key><string>goose-print-3.local</string>
+          <key>ResourcePath</key><string>printers/HZD950-Photo</string>
+          <key>Port</key><integer>631</integer>
+        </dict>
+      </array>
+    </dict>
+  </array>
+  <key>PayloadType</key><string>Configuration</string>
+  <key>PayloadVersion</key><integer>1</integer>
+  <key>PayloadIdentifier</key><string>com.runthewall.hzd950</string>
+  <key>PayloadUUID</key><string>C1691932-8A8D-47E8-BF72-5CEF6EFC0340</string>
+  <key>PayloadDisplayName</key><string>RTW HZD950 Label Printers (AirPrint)</string>
+  <key>PayloadDescription</key><string>Adds HZD950 (labels) and HZD950-Photo (Gathering) as AirPrint printers. Free driver by Run The Wall — https://constly.com</string>
+  <key>PayloadOrganization</key><string>Run The Wall</string>
+</dict>
+</plist>
