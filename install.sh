@@ -66,8 +66,11 @@ if [ -f "$CARD" ]; then
     read ans || ans=""
     case "$ans" in
       y|Y)
-        # slow + a touch darker so the solid-black banner lays down clean
-        lp -d "$QUEUE" -o media=na_index-4x6_4x6in -o PrintSpeed=20 -o Darkness=11 "$CARD" >/dev/null 2>&1 \
+        # CUPS rejects jobs submitted by root; print as the invoking user.
+        # slow + a touch darker so the solid-black banner lays down clean.
+        as_user="sh -c"
+        [ -n "$SUDO_USER" ] && as_user="sudo -u $SUDO_USER sh -c"
+        $as_user "lp -d '$QUEUE' -o media=na_index-4x6_4x6in -o PrintSpeed=20 -o Darkness=11 '$CARD'" >/dev/null 2>&1 \
           && echo "   sent. (The first label may streak — printhead warm-up — that's normal.)" \
           || echo "   couldn't print — is the printer connected and powered?"
         ;;
