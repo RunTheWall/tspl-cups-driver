@@ -13,18 +13,37 @@ cd "$(dirname "$0")"
 HERE="$(pwd)"
 
 QUEUE="${1:-HZD950}"
-SERVERBIN="$(cups-config --serverbin 2>/dev/null || echo /usr/lib/cups)"
 PPDDIR="/usr/share/ppd/hzd950"
+
+# CUPS server binary dir varies by distro: /usr/lib/cups (Debian/Arch),
+# /usr/libexec/cups (Fedora/RHEL), /usr/lib64/cups (some). Trust cups-config,
+# else probe the known locations.
+SERVERBIN="$(cups-config --serverbin 2>/dev/null)"
+[ -d "$SERVERBIN/backend" ] || SERVERBIN=""
+if [ -z "$SERVERBIN" ]; then
+    for d in /usr/lib/cups /usr/libexec/cups /usr/lib64/cups; do
+        [ -d "$d/backend" ] && { SERVERBIN="$d"; break; }
+    done
+fi
+[ -n "$SERVERBIN" ] || SERVERBIN=/usr/lib/cups
 
 if [ "$(id -u)" != "0" ]; then echo "Please run with sudo: sudo ./install.sh"; exit 1; fi
 
 echo ">> checking build deps..."
-miss=""
-command -v gcc  >/dev/null 2>&1 || miss="$miss gcc"
-command -v make >/dev/null 2>&1 || miss="$miss make"
-[ -f /usr/include/cups/raster.h ] || miss="$miss libcups2-dev"
-if [ -n "$miss" ]; then
-    echo "   missing:$miss  ->  sudo apt install build-essential libcups2-dev"
+need=""
+command -v gcc  >/dev/null 2>&1 || need="$need gcc"
+command -v make >/dev/null 2>&1 || need="$need make"
+{ [ -f /usr/include/cups/raster.h ] || cups-config --cflags >/dev/null 2>&1; } || need="$need cups-headers"
+if [ -n "$need" ]; then
+    echo "   missing:$need — install a C compiler, make, and the CUPS dev headers:"
+    if   command -v apt-get >/dev/null 2>&1; then echo "   ->  sudo apt install build-essential libcups2-dev"
+    elif command -v dnf     >/dev/null 2>&1; then echo "   ->  sudo dnf install gcc make cups-devel"
+    elif command -v yum     >/dev/null 2>&1; then echo "   ->  sudo yum install gcc make cups-devel"
+    elif command -v pacman  >/dev/null 2>&1; then echo "   ->  sudo pacman -S --needed base-devel cups"
+    elif command -v zypper  >/dev/null 2>&1; then echo "   ->  sudo zypper install gcc make cups-devel"
+    elif command -v apk     >/dev/null 2>&1; then echo "   ->  sudo apk add build-base cups-dev"
+    else echo "   ->  (your package manager) install: gcc make cups-devel"
+    fi
     exit 1
 fi
 
@@ -55,7 +74,8 @@ CONF=/etc/cups/cupsd.conf
 if ! grep -qi '^BrowseDNSSDSubTypes' "$CONF" 2>/dev/null; then
     echo 'BrowseDNSSDSubTypes _print,_universal' >> "$CONF"
     echo "   set BrowseDNSSDSubTypes _print,_universal in cupsd.conf"
-    systemctl restart cups 2>/dev/null || service cups restart 2>/dev/null || true
+    systemctl restart cups 2>/dev/null || systemctl restart cupsd 2>/dev/null \
+      || service cups restart 2>/dev/null || service cupsd restart 2>/dev/null || true
     sleep 1
 fi
 

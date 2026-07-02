@@ -29,7 +29,11 @@ Print Speed, offsets, and **Print Mode (including Gathering)**.
 
 - **Printer:** HZD950-PRO, sold as the **HERO Shipping Label Printer** and other rebadges of the same
   300 dpi USB TSPL 4×6 label engine (`0fe6:811e`).
-- **Platforms:** Debian/Raspberry Pi OS and friends, **arm64 / armhf / x86_64** (builds from source).
+- **Platforms:** **any Linux with CUPS 2.x + a C toolchain + the `usblp` kernel module** — Debian/Ubuntu/
+  Raspberry Pi OS, Fedora/RHEL, Arch, openSUSE, Alpine, … `install.sh` auto-detects your package manager
+  and CUPS layout. Because it **builds from source** it's architecture-independent: **arm64, armhf,
+  x86_64**, and anything GCC targets — unlike the vendor's x86-only binaries.
+  _Tested on Raspberry Pi OS / Debian 13 "Trixie" (CUPS 2.4, arm64)._
 - **Controls (CUPS print options):**
   - **Darkness** `0–15` → TSPL `DENSITY`
   - **Print Speed** `2–6 in/sec` → TSPL `SPEED`
@@ -45,9 +49,9 @@ cd hzd950-cups-driver
 sudo ./install.sh          # builds the filter, installs filter + backend + PPD, adds a "HZD950" queue
 ```
 
-`install.sh` needs `gcc`, `make`, and `libcups2-dev` (it will tell you if they're missing:
-`sudo apt install build-essential libcups2-dev`). It also turns on sharing + AirPrint and offers to
-print a welcome label ([`assets/welcome-card.png`](assets/welcome-card.png)).
+`install.sh` needs a C compiler, `make`, and the CUPS dev headers. If they're missing it prints the exact
+install command **for your distro** (apt / dnf / yum / pacman / zypper / apk). It also turns on sharing +
+AirPrint and offers to print a welcome label ([`assets/welcome-card.png`](assets/welcome-card.png)).
 
 Then print to the **HZD950** queue from anything — or add it from
 [another Mac / iPhone / PC](#connect-from-another-mac--iphone--pc-no-driver-install) with no driver.
