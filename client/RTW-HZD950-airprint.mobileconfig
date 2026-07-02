@@ -3,8 +3,12 @@
   Double-click this on a Mac (or open on iPhone/iPad) to add the HZD950 label
   printers with NO commands. It pins the printers even across subnets.
 
-  EDIT the two IPAddress values below to your Pi's .local hostname (or its IP).
-  Find it with:  ippfind   (e.g. goose-print-3.local)
+  >>> BEFORE USING: replace  YOUR-PI.local  (both IPAddress lines below) with
+      YOUR OWN print server's name or IP. To find it, on any Mac on the same
+      network run:
+          ippfind          # prints ipp://<your-host>:631/printers/HZD950
+      or on the Pi itself:
+          hostname         # then append .local  (e.g. raspberrypi.local)
 
   Note: a profile can't set default paper size — that's already handled on the
   Pi (media-default = 4x6). Free driver by Run The Wall — https://constly.com
@@ -23,12 +27,12 @@
       <key>AirPrint</key>
       <array>
         <dict>
-          <key>IPAddress</key><string>goose-print-3.local</string>
+          <key>IPAddress</key><string>YOUR-PI.local</string>
           <key>ResourcePath</key><string>printers/HZD950</string>
           <key>Port</key><integer>631</integer>
         </dict>
         <dict>
-          <key>IPAddress</key><string>goose-print-3.local</string>
+          <key>IPAddress</key><string>YOUR-PI.local</string>
           <key>ResourcePath</key><string>printers/HZD950-Photo</string>
           <key>Port</key><integer>631</integer>
         </dict>
