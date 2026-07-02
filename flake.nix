@@ -11,7 +11,7 @@
       packages = forAll (pkgs: {
         default = pkgs.stdenv.mkDerivation {
           pname = "hzd950-cups-driver";
-          version = "1.0.0";
+          version = "1.0.1";
           src = self;
           nativeBuildInputs = [ pkgs.cups ];   # provides cups-config
           buildInputs = [ pkgs.cups ];
