@@ -20,8 +20,10 @@ jobs:
       - name: Build filter + .deb (${{ matrix.arch }})
         run: |
           if [ "$GITHUB_REF_TYPE" = tag ]; then VER="${GITHUB_REF_NAME#v}"; else VER=0.0.0-dev; fi
+          # Build on bullseye (glibc 2.31) so the binaries also run on older
+          # LTS (Ubuntu 20.04/22.04, Debian 11+), not just bookworm/trixie.
           docker run --rm --platform=${{ matrix.platform }} -v "$PWD":/src -w /src \
-            -e VER="$VER" -e ARCH="${{ matrix.arch }}" debian:bookworm-slim sh -eux -c '
+            -e VER="$VER" -e ARCH="${{ matrix.arch }}" debian:bullseye-slim sh -eux -c '
               apt-get update
               apt-get install -y --no-install-recommends build-essential libcups2-dev dpkg-dev file
               make -s
