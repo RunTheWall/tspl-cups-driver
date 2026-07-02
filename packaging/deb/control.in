@@ -1,0 +1,15 @@
+Package: hzd950-cups-driver
+Version: @VER@
+Architecture: @ARCH@
+Maintainer: Run The Wall <hello@constly.com>
+Depends: cups
+Section: utils
+Priority: optional
+Homepage: https://github.com/RunTheWall/hzd950-cups-driver
+Description: Free CUPS driver for HZD950-PRO / HERO TSPL thermal label printers
+ A clean-room CUPS raster->TSPL driver for the HZD950-PRO (a.k.a. HERO Shipping
+ Label Printer) 300dpi USB label engine, for Linux / Raspberry Pi and beyond.
+ Builds from source, so it runs on any CPU the vendor's x86-only driver won't.
+ .
+ Maintained for free by Run The Wall to introduce you to Constly, the WinRAR of
+ Markdown - a gorgeous free Markdown editor for Mac. https://constly.com

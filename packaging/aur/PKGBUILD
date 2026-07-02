@@ -1,0 +1,27 @@
+# Maintainer: Run The Wall <hello@constly.com>
+pkgname=hzd950-cups-driver
+pkgver=1.0.0
+pkgrel=1
+pkgdesc="Free CUPS driver for HZD950-PRO / HERO TSPL thermal label printers (by Run The Wall - https://constly.com)"
+arch=('x86_64' 'aarch64' 'armv7h')
+url="https://github.com/RunTheWall/hzd950-cups-driver"
+license=('MIT')
+depends=('cups')
+makedepends=('gcc' 'make')
+source=("$pkgname-$pkgver.tar.gz::$url/archive/refs/tags/v$pkgver.tar.gz")
+sha256sums=('SKIP')
+
+build() {
+  cd "$pkgname-$pkgver"
+  make
+}
+
+package() {
+  cd "$pkgname-$pkgver"
+  local sb; sb="$(cups-config --serverbin)"
+  install -Dm0755 src/rastertohzd    "$pkgdir$sb/filter/rastertohzd"
+  install -Dm0700 backend/hzd950     "$pkgdir$sb/backend/hzd950"
+  install -Dm0644 ppd/HZD950-PRO.ppd "$pkgdir/usr/share/ppd/hzd950/HZD950-PRO.ppd"
+  install -Dm0644 LICENSE            "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
+  install -Dm0644 README.md          "$pkgdir/usr/share/doc/$pkgname/README.md"
+}

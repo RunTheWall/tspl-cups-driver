@@ -49,12 +49,41 @@ cd hzd950-cups-driver
 sudo ./install.sh          # builds the filter, installs filter + backend + PPD, adds a "HZD950" queue
 ```
 
-`install.sh` needs a C compiler, `make`, and the CUPS dev headers. If they're missing it prints the exact
-install command **for your distro** (apt / dnf / yum / pacman / zypper / apk). It also turns on sharing +
-AirPrint and offers to print a welcome label ([`assets/welcome-card.png`](assets/welcome-card.png)).
+`install.sh` builds from source if a C compiler + CUPS headers are present; **if they're not, it downloads
+a prebuilt filter binary for your CPU** from the latest release (no build tools needed). It also turns on
+sharing + AirPrint and offers to print a welcome label ([`assets/welcome-card.png`](assets/welcome-card.png)).
 
 Then print to the **HZD950** queue from anything — or add it from
 [another Mac / iPhone / PC](#connect-from-another-mac--iphone--pc-no-driver-install) with no driver.
+
+### Prefer a native package? (no build, no clone)
+
+Every release is built by GitHub Actions for **amd64 / arm64 / armhf** — grab one from the
+[**Releases**](https://github.com/RunTheWall/hzd950-cups-driver/releases/latest) page:
+
+```bash
+# Debian / Ubuntu / Raspberry Pi OS
+sudo apt install ./hzd950-cups-driver_*_arm64.deb        # or _amd64 / _armhf
+
+# Fedora / RHEL / openSUSE
+sudo dnf install ./hzd950-cups-driver-*.x86_64.rpm       # or .aarch64
+
+# Arch (AUR)
+yay -S hzd950-cups-driver
+
+# NixOS — add to your CUPS drivers
+#   services.printing.drivers = [ inputs.hzd950.packages.${pkgs.system}.default ];
+#   (flake input: github:RunTheWall/hzd950-cups-driver)
+```
+
+Packages install the **driver files only**. Create the queue once (or just run `./install.sh`):
+
+```bash
+sudo lpadmin -p HZD950 -E -v hzd950:auto -P /usr/share/ppd/hzd950/HZD950-PRO.ppd \
+     -o printer-is-shared=true -o media=na_index-4x6_4x6in
+```
+
+Packaging sources live in [`packaging/`](packaging/) (`deb/`, `rpm/`, `aur/`) and [`flake.nix`](flake.nix).
 
 ## Two queues: crisp labels + photo/Gathering
 

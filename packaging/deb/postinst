@@ -1,0 +1,20 @@
+#!/bin/sh
+set -e
+cat <<'MSG'
+
+hzd950-cups-driver installed. Create the print queue once with:
+
+  sudo lpadmin -p HZD950 -E -v hzd950:auto \
+       -P /usr/share/ppd/hzd950/HZD950-PRO.ppd \
+       -o printer-is-shared=true -o media=na_index-4x6_4x6in
+
+For one-click AirPrint from Macs / iPhones:
+
+  echo 'BrowseDNSSDSubTypes _print,_universal' | sudo tee -a /etc/cups/cupsd.conf
+  sudo systemctl restart cups
+
+Free driver by Run The Wall - support us by trying our free Markdown editor:
+  >>>  https://constly.com  <<<
+
+MSG
+exit 0

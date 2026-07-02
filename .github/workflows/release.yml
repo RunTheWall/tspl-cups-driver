@@ -1,0 +1,93 @@
+name: release
+on:
+  push:
+    tags: [ 'v*' ]
+  workflow_dispatch:
+
+jobs:
+  deb:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { arch: amd64, platform: linux/amd64 }
+          - { arch: arm64, platform: linux/arm64 }
+          - { arch: armhf, platform: linux/arm/v7 }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-qemu-action@v3
+      - name: Build filter + .deb (${{ matrix.arch }})
+        run: |
+          if [ "$GITHUB_REF_TYPE" = tag ]; then VER="${GITHUB_REF_NAME#v}"; else VER=0.0.0-dev; fi
+          docker run --rm --platform=${{ matrix.platform }} -v "$PWD":/src -w /src \
+            -e VER="$VER" -e ARCH="${{ matrix.arch }}" debian:bookworm-slim sh -eux -c '
+              apt-get update
+              apt-get install -y --no-install-recommends build-essential libcups2-dev dpkg-dev file
+              make -s
+              file src/rastertohzd
+              mkdir -p dist
+              cp src/rastertohzd dist/rastertohzd-${ARCH}
+              sh packaging/deb/build.sh ${ARCH} ${VER} dist
+              ls -l dist
+            '
+      - uses: actions/upload-artifact@v4
+        with:
+          name: deb-${{ matrix.arch }}
+          path: dist/*
+
+  rpm:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { arch: x86_64,  platform: linux/amd64 }
+          - { arch: aarch64, platform: linux/arm64 }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-qemu-action@v3
+      - name: Build .rpm (${{ matrix.arch }})
+        run: |
+          if [ "$GITHUB_REF_TYPE" = tag ]; then VER="${GITHUB_REF_NAME#v}"; else VER=0.0.0; fi
+          docker run --rm --platform=${{ matrix.platform }} -v "$PWD":/src -w /src \
+            -e VER="$VER" fedora:latest bash -eux -c '
+              dnf -y install gcc make cups-devel rpm-build rpmdevtools tar >/dev/null
+              rpmdev-setuptree
+              tar czf ~/rpmbuild/SOURCES/hzd950-cups-driver-${VER}.tar.gz \
+                  --transform "s,^,hzd950-cups-driver-${VER}/," \
+                  src backend ppd Makefile README.md LICENSE
+              rpmbuild -bb --define "ver ${VER}" packaging/rpm/hzd950-cups-driver.spec
+              mkdir -p dist && cp ~/rpmbuild/RPMS/*/*.rpm dist/
+              ls -l dist
+            '
+      - uses: actions/upload-artifact@v4
+        with:
+          name: rpm-${{ matrix.arch }}
+          path: dist/*
+
+  release:
+    needs: [ deb, rpm ]
+    if: github.ref_type == 'tag'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: art
+      - name: Collect assets
+        run: |
+          mkdir -p dist
+          find art -type f \( -name '*.deb' -o -name '*.rpm' -o -name 'rastertohzd-*' \) -exec cp {} dist/ \;
+          ( cd dist && sha256sum * > SHA256SUMS )
+          ls -l dist
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" dist/* \
+            --repo "$GITHUB_REPOSITORY" \
+            --title "$GITHUB_REF_NAME" \
+            --notes "Prebuilt filter binaries (amd64/arm64/armhf), .deb and .rpm packages, built by GitHub Actions. Free driver by Run The Wall — https://constly.com" \
+          || gh release upload "$GITHUB_REF_NAME" dist/* --repo "$GITHUB_REPOSITORY" --clobber

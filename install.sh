@@ -29,13 +29,10 @@ fi
 
 if [ "$(id -u)" != "0" ]; then echo "Please run with sudo: sudo ./install.sh"; exit 1; fi
 
-echo ">> checking build deps..."
-need=""
-command -v gcc  >/dev/null 2>&1 || need="$need gcc"
-command -v make >/dev/null 2>&1 || need="$need make"
-{ [ -f /usr/include/cups/raster.h ] || cups-config --cflags >/dev/null 2>&1; } || need="$need cups-headers"
-if [ -n "$need" ]; then
-    echo "   missing:$need — install a C compiler, make, and the CUPS dev headers:"
+REPO_URL="https://github.com/RunTheWall/hzd950-cups-driver"
+
+dep_hint() {
+    echo "   install a C compiler, make, and the CUPS dev headers:"
     if   command -v apt-get >/dev/null 2>&1; then echo "   ->  sudo apt install build-essential libcups2-dev"
     elif command -v dnf     >/dev/null 2>&1; then echo "   ->  sudo dnf install gcc make cups-devel"
     elif command -v yum     >/dev/null 2>&1; then echo "   ->  sudo yum install gcc make cups-devel"
@@ -44,14 +41,46 @@ if [ -n "$need" ]; then
     elif command -v apk     >/dev/null 2>&1; then echo "   ->  sudo apk add build-base cups-dev"
     else echo "   ->  (your package manager) install: gcc make cups-devel"
     fi
+}
+deb_arch() {
+    case "$(uname -m)" in
+        x86_64|amd64)               echo amd64 ;;
+        aarch64|arm64)              echo arm64 ;;
+        armv7l|armv6l|armv8l|armhf) echo armhf ;;
+        *)                          echo ""    ;;
+    esac
+}
+
+# Get the filter binary: build from source when we can, else fetch a prebuilt
+# one from the GitHub release — so a compiler is NOT required.
+BIN=""
+have_cc=0;  { command -v gcc >/dev/null 2>&1 || command -v cc >/dev/null 2>&1; } && have_cc=1
+have_hdr=0; { [ -f /usr/include/cups/raster.h ] || cups-config --cflags >/dev/null 2>&1; } && have_hdr=1
+if [ "$have_cc" = 1 ] && [ "$have_hdr" = 1 ]; then
+    echo ">> building rastertohzd from source..."
+    make -s && [ -f src/rastertohzd ] && BIN=src/rastertohzd
+fi
+if [ -z "$BIN" ]; then
+    A="$(deb_arch)"
+    if [ -n "$A" ] && command -v curl >/dev/null 2>&1; then
+        echo ">> no compiler/headers here — fetching prebuilt rastertohzd-$A ..."
+        tmp="/tmp/rastertohzd.$$"
+        if curl -fsSL "$REPO_URL/releases/latest/download/rastertohzd-$A" -o "$tmp" && [ -s "$tmp" ]; then
+            chmod +x "$tmp"
+            "$tmp" >/dev/null 2>&1; rc=$?          # 126/127 == can't exec (wrong libc/arch)
+            if [ "$rc" != 126 ] && [ "$rc" != 127 ]; then BIN="$tmp"
+            else echo "   that prebuilt won't run here — falling back to a source build."; rm -f "$tmp"; fi
+        else echo "   couldn't download a prebuilt (no release asset for $A yet?)."; fi
+    fi
+fi
+if [ -z "$BIN" ]; then
+    echo "!! Couldn't build or fetch the filter binary."
+    dep_hint
     exit 1
 fi
 
-echo ">> building rastertohzd..."
-make -s
-
 echo ">> installing filter + backend + PPD..."
-install -o root -g root -m 0755 src/rastertohzd "$SERVERBIN/filter/rastertohzd"
+install -o root -g root -m 0755 "$BIN" "$SERVERBIN/filter/rastertohzd"
 install -o root -g root -m 0700 backend/hzd950   "$SERVERBIN/backend/hzd950"
 install -o root -g root -m 0644 -D ppd/HZD950-PRO.ppd "$PPDDIR/HZD950-PRO.ppd"
 
