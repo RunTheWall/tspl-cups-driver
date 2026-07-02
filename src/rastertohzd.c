@@ -21,7 +21,7 @@
  *
  *  CUPS options honoured (same as the vendor PPD):
  *     Darkness   (0..15)            -> DENSITY
- *     PrintSpeed (20..60 = ips x10) -> SPEED (in/sec)
+ *     PrintSpeed (10..60 = ips x10) -> SPEED (in/sec)
  *     Horizontal,Vertical (dots)    -> REFERENCE
  *     PrintMode  0 None / 2 Diffusion / 3 Gathering / 4 ErrorDiffusion / 5 Default
  *                -> halftone used to flatten 8bpp grey into 1bpp dots.

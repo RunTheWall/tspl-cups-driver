@@ -15,8 +15,8 @@ jobs:
           - { arch: arm64, platform: linux/arm64 }
           - { arch: armhf, platform: linux/arm/v7 }
     steps:
-      - uses: actions/checkout@v4
-      - uses: docker/setup-qemu-action@v3
+      - uses: actions/checkout@v7
+      - uses: docker/setup-qemu-action@v4
       - name: Build filter + .deb (${{ matrix.arch }})
         run: |
           if [ "$GITHUB_REF_TYPE" = tag ]; then VER="${GITHUB_REF_NAME#v}"; else VER=0.0.0-dev; fi
@@ -33,7 +33,7 @@ jobs:
               sh packaging/deb/build.sh ${ARCH} ${VER} dist
               ls -l dist
             '
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: deb-${{ matrix.arch }}
           path: dist/*
@@ -47,8 +47,8 @@ jobs:
           - { arch: x86_64,  platform: linux/amd64 }
           - { arch: aarch64, platform: linux/arm64 }
     steps:
-      - uses: actions/checkout@v4
-      - uses: docker/setup-qemu-action@v3
+      - uses: actions/checkout@v7
+      - uses: docker/setup-qemu-action@v4
       - name: Build .rpm (${{ matrix.arch }})
         run: |
           if [ "$GITHUB_REF_TYPE" = tag ]; then VER="${GITHUB_REF_NAME#v}"; else VER=0.0.0; fi
@@ -63,7 +63,7 @@ jobs:
               mkdir -p dist && cp ~/rpmbuild/RPMS/*/*.rpm dist/
               ls -l dist
             '
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: rpm-${{ matrix.arch }}
           path: dist/*
@@ -75,7 +75,7 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           path: art
       - name: Collect assets

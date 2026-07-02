@@ -12,7 +12,7 @@ jobs:
         os: [ ubuntu-latest, ubuntu-24.04-arm ]   # amd64 + free arm64 runner
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Install build deps
         run: sudo apt-get update && sudo apt-get install -y --no-install-recommends build-essential libcups2-dev
       - name: Build

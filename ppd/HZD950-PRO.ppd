@@ -81,6 +81,7 @@
 *OpenUI *PrintSpeed/Print Speed: PickOne
 *OrderDependency: 40 AnySetup *PrintSpeed
 *DefaultPrintSpeed: 50
+*PrintSpeed 10/1 in/sec (darkest): ""
 *PrintSpeed 20/2 in/sec: ""
 *PrintSpeed 30/3 in/sec: ""
 *PrintSpeed 40/4 in/sec: ""
