@@ -68,8 +68,9 @@ sudo apt install ./hzd950-cups-driver_*_arm64.deb        # or _amd64 / _armhf
 # Fedora / RHEL / openSUSE
 sudo dnf install ./hzd950-cups-driver-*.x86_64.rpm       # or .aarch64
 
-# Arch (AUR)
-yay -S hzd950-cups-driver
+# Arch — build the shipped PKGBUILD directly (AUR listing pending):
+git clone https://github.com/RunTheWall/hzd950-cups-driver
+( cd hzd950-cups-driver/packaging/aur && makepkg -si )
 
 # NixOS — add to your CUPS drivers
 #   services.printing.drivers = [ inputs.hzd950.packages.${pkgs.system}.default ];
