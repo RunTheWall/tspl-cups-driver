@@ -1,0 +1,7 @@
+[hzd950]
+name=HZD950 CUPS driver (Run The Wall)
+baseurl=https://runthewall.github.io/hzd950-cups-driver/rpm
+enabled=1
+gpgcheck=0
+repo_gpgcheck=1
+gpgkey=https://runthewall.github.io/hzd950-cups-driver/rpm/RPM-GPG-KEY-hzd950

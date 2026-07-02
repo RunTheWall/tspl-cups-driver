@@ -56,7 +56,27 @@ sharing + AirPrint and offers to print a welcome label ([`assets/welcome-card.pn
 Then print to the **HZD950** queue from anything — or add it from
 [another Mac / iPhone / PC](#connect-from-another-mac--iphone--pc-no-driver-install) with no driver.
 
-### Prefer a native package? (no build, no clone)
+### Add our package repo (apt / dnf) — recommended
+
+Add it once, then install and **upgrade by name** like any system package. Signed, and hosted
+free on GitHub Pages — [runthewall.github.io/hzd950-cups-driver](https://runthewall.github.io/hzd950-cups-driver/).
+
+```bash
+# Debian / Ubuntu / Raspberry Pi OS
+curl -fsSL https://runthewall.github.io/hzd950-cups-driver/apt/KEY.gpg \
+  | sudo tee /usr/share/keyrings/hzd950.gpg >/dev/null
+echo "deb [signed-by=/usr/share/keyrings/hzd950.gpg] https://runthewall.github.io/hzd950-cups-driver/apt ./" \
+  | sudo tee /etc/apt/sources.list.d/hzd950.list
+sudo apt update && sudo apt install hzd950-cups-driver
+```
+```bash
+# Fedora / RHEL / openSUSE
+sudo curl -fsSL https://runthewall.github.io/hzd950-cups-driver/rpm/hzd950.repo \
+  -o /etc/yum.repos.d/hzd950.repo
+sudo dnf install hzd950-cups-driver
+```
+
+### Or a one-off package download (no repo)
 
 Every release is built by GitHub Actions for **amd64 / arm64 / armhf** — grab one from the
 [**Releases**](https://github.com/RunTheWall/hzd950-cups-driver/releases/latest) page:

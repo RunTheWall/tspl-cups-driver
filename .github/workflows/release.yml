@@ -93,3 +93,67 @@ jobs:
             --title "$GITHUB_REF_NAME" \
             --notes "Prebuilt filter binaries (amd64/arm64/armhf), .deb and .rpm packages, built by GitHub Actions. Free driver by Run The Wall — https://constly.com" \
           || gh release upload "$GITHUB_REF_NAME" dist/* --repo "$GITHUB_REPOSITORY" --clobber
+
+  pages:
+    needs: [ deb, rpm ]
+    if: github.ref_type == 'tag'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/configure-pages@v6
+        with:
+          enablement: true
+      - uses: actions/download-artifact@v8
+        with:
+          path: art
+      - name: Build signed apt + dnf repos
+        env:
+          GPG_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
+        run: |
+          set -eu
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends dpkg-dev apt-utils createrepo-c gnupg
+          echo "$GPG_PRIVATE_KEY" | gpg --batch --import
+          KEY=hello@constly.com
+          SIGN="gpg --batch --yes --pinentry-mode loopback -u $KEY"
+
+          mkdir -p site/apt site/rpm
+          find art -name '*.deb' -exec cp {} site/apt/ \;
+          find art -name '*.rpm' -exec cp {} site/rpm/ \;
+          cp packaging/repo/index.html site/index.html
+
+          # --- apt: flat repo, signed Release ---
+          ( cd site/apt
+            dpkg-scanpackages --multiversion . > Packages
+            gzip -9c Packages > Packages.gz
+            apt-ftparchive \
+              -o APT::FTPArchive::Release::Origin=RunTheWall \
+              -o APT::FTPArchive::Release::Label=hzd950-cups-driver \
+              -o APT::FTPArchive::Release::Suite=stable \
+              -o APT::FTPArchive::Release::Codename=stable \
+              release . > Release
+            $SIGN --clearsign -o InRelease Release
+            $SIGN -abs -o Release.gpg Release )
+          gpg --export "$KEY"        > site/apt/KEY.gpg    # dearmored, for signed-by
+          gpg --armor --export "$KEY" > site/apt/KEY.asc
+
+          # --- dnf: repodata with signed repomd (repo_gpgcheck) ---
+          cp packaging/repo/RPM-GPG-KEY-hzd950 site/rpm/RPM-GPG-KEY-hzd950
+          cp packaging/repo/hzd950.repo        site/rpm/hzd950.repo
+          ( cd site/rpm
+            createrepo_c .
+            $SIGN --detach-sign --armor repodata/repomd.xml )
+
+          echo "=== site tree ===" ; find site -type f | sort
+      - uses: actions/upload-pages-artifact@v5
+        with:
+          path: site
+      - id: deploy
+        uses: actions/deploy-pages@v5

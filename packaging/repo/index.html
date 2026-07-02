@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>HZD950 CUPS driver — package repository</title>
+<style>
+  :root { color-scheme: dark; }
+  body { margin:0; background:#0b0b0c; color:#e9e9ea;
+         font:16px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif; }
+  .wrap { max-width:820px; margin:0 auto; padding:56px 22px 96px; }
+  h1 { font-size:2.1rem; margin:0 0 .2em; letter-spacing:-.02em; }
+  h2 { font-size:1.15rem; margin:2.4em 0 .6em; }
+  a { color:#8ab4ff; }
+  .sub { color:#a0a0a6; margin:0 0 2em; }
+  pre { background:#151517; border:1px solid #26262a; border-radius:10px;
+        padding:16px 18px; overflow-x:auto; font-size:13.5px; }
+  code { font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; }
+  .card { background:#151517; border:1px solid #26262a; border-radius:12px; padding:20px 22px; margin:14px 0; }
+  .fp { color:#a0a0a6; font-size:13px; word-break:break-all; }
+  .promo { margin-top:3em; padding:20px 22px; border:1px dashed #3a3a40; border-radius:12px; }
+  .promo b { color:#fff; }
+  footer { margin-top:3em; color:#77777e; font-size:13px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>HZD950 CUPS driver</h1>
+  <p class="sub">A signed apt &amp; dnf package repository. Add it once, then install and
+  auto-upgrade the driver by name. Free &amp; open source by
+  <a href="https://github.com/RunTheWall/hzd950-cups-driver">Run The Wall</a>.</p>
+
+  <div class="card">
+    <h2 style="margin-top:0">Debian / Ubuntu / Raspberry Pi OS</h2>
+<pre><code>curl -fsSL https://runthewall.github.io/hzd950-cups-driver/apt/KEY.gpg \
+  | sudo tee /usr/share/keyrings/hzd950.gpg &gt;/dev/null
+echo "deb [signed-by=/usr/share/keyrings/hzd950.gpg] https://runthewall.github.io/hzd950-cups-driver/apt ./" \
+  | sudo tee /etc/apt/sources.list.d/hzd950.list
+sudo apt update &amp;&amp; sudo apt install hzd950-cups-driver</code></pre>
+  </div>
+
+  <div class="card">
+    <h2 style="margin-top:0">Fedora / RHEL / openSUSE</h2>
+<pre><code>sudo curl -fsSL https://runthewall.github.io/hzd950-cups-driver/rpm/hzd950.repo \
+  -o /etc/yum.repos.d/hzd950.repo
+sudo dnf install hzd950-cups-driver</code></pre>
+  </div>
+
+  <h2>After installing</h2>
+  <p>The package installs the driver files. Create the print queue once:</p>
+<pre><code>sudo lpadmin -p HZD950 -E -v hzd950:auto -P /usr/share/ppd/hzd950/HZD950-PRO.ppd \
+     -o printer-is-shared=true -o media=na_index-4x6_4x6in</code></pre>
+
+  <h2>Signing key</h2>
+  <p class="fp">All metadata and repos are signed with:<br>
+  <code>3F73 56D6 95A0 69F1 FCD3&nbsp;&nbsp;8C87 B259 0979 F60F A24D</code></p>
+
+  <div class="promo">
+    This driver is maintained <b>for free</b>. If it helped, try our best-in-class free
+    Markdown editor for Mac — <b><a href="https://constly.com">Constly</a></b>, the WinRAR of Markdown.
+  </div>
+
+  <footer>
+    Prefer no repo? Grab a <code>.deb</code>/<code>.rpm</code> or a prebuilt binary from the
+    <a href="https://github.com/RunTheWall/hzd950-cups-driver/releases">releases page</a>.
+  </footer>
+</div>
+</body>
+</html>
