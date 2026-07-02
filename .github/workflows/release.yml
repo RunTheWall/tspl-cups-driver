@@ -107,9 +107,7 @@ jobs:
       url: ${{ steps.deploy.outputs.page_url }}
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/configure-pages@v6
-        with:
-          enablement: true
+      - uses: actions/configure-pages@v6   # Pages already enabled on the repo (Actions source)
       - uses: actions/download-artifact@v8
         with:
           path: art
