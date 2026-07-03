@@ -1,4 +1,4 @@
-%{!?ver: %global ver 1.0.2}
+%{!?ver: %global ver 1.0.3}
 # CUPS serverbin path differs per distro — ask cups-config (works on Fedora/RHEL/SUSE).
 %global cups_serverbin %(cups-config --serverbin 2>/dev/null || echo %{_prefix}/lib/cups)
 %global debug_package %{nil}
@@ -51,6 +51,9 @@ Free driver by Run The Wall - support us: https://constly.com
 MSG
 
 %changelog
+* Fri Jul 03 2026 Run The Wall <hello@constly.com> - 1.0.3-1
+- Version bump; verifies repo auto-upgrade path.
+
 * Fri Jul 03 2026 Run The Wall <hello@constly.com> - 1.0.2-1
 - Signed apt/dnf package repositories on GitHub Pages.
 
