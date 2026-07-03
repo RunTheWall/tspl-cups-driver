@@ -155,3 +155,6 @@ jobs:
           path: site
       - id: deploy
         uses: actions/deploy-pages@v5
+        with:
+          timeout: 900000      # 15 min — GitHub Pages first-deploy can queue slowly
+          error_count: 50
