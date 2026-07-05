@@ -24,7 +24,7 @@
   <img src="https://img.shields.io/badge/Debian%20%2F%20Ubuntu-A81D33?logo=debian&logoColor=white" alt="Debian / Ubuntu">
   <img src="https://img.shields.io/badge/Fedora%20%2F%20RHEL-51A2DA?logo=fedora&logoColor=white" alt="Fedora / RHEL">
   <img src="https://img.shields.io/badge/Arch-1793D1?logo=archlinux&logoColor=white" alt="Arch">
-  &nbsp;&nbsp;<b>Prints from</b>
+  <br><br><b>Prints from</b>
   <img src="https://img.shields.io/badge/macOS-AirPrint-000000?logo=apple&logoColor=white" alt="macOS">
   <img src="https://img.shields.io/badge/iOS%20%2F%20iPadOS-000000?logo=apple&logoColor=white" alt="iOS / iPadOS">
   <img src="https://img.shields.io/badge/Windows%2010%2F11-0078D6?logo=windows&logoColor=white" alt="Windows">
