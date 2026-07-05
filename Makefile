@@ -14,6 +14,6 @@ src/rastertotspl: src/rastertotspl.c
 	$(CC) $(CFLAGS) -o $@ $< $(LIBS)
 
 clean:
-	rm -f src/rastertotspl
+	rm -f src/rastertotspl tests/mkras
 
 .PHONY: all clean
