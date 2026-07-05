@@ -52,16 +52,26 @@ Confirmed and add its USB id to auto-detect.
 | Printer | dpi | USB id | Status |
 |---|---|---|---|
 | **HZD950-PRO / HERO** | 300 | `0fe6:811e` | ✅ **Tested** |
-| **Munbyn ITPP941 / 941B / 941P** | 203 · 300 | `09c6:0426` / generic | 🟢 TSPL |
+| **Munbyn ITPP941 / 941B** (941P: see note) | 203 | `09c6:0426` / generic | 🟢 TSPL |
 | **iDPRT SP410 / SP420** | 203 | `20d1:7008` | 🟢 TSPL |
-| **HPRT N41 / SL42** | 203 | 20d1 family | 🟢 TSPL |
+| **HPRT N41 / SL42** | 203 | `20d1` family (inferred) | 🟢 TSPL |
 | **Beeprt BY-426** (shared OEM engine) | 203 | `09c6:0426` | 🟢 TSPL |
-| **JADENS JD-168** | 203 | `09c6:0426` | 🟢 TSPL |
-| **Polono PL420** | 203 | HPRT rebadge | 🟢 TSPL |
-| **Xprinter XP-420B / 460B / 470B** | 203 · 300 | varies | 🟢 TSPL |
+| **JADENS JD-168 / JD-268BT** | 203 | `09c6:0426` | 🟢 TSPL |
+| **Polono PL420** | 203 | unknown | 🟡 community |
+| **Xprinter XP-420B / 460B / 470B** | 203 | `2d84:b528` (460B) / varies | 🟢 TSPL |
 | **Phomemo PM-241 / D520** | 203 | (unverified) | 🟡 community |
 
-**Check yours in 10 seconds** (prints nothing): `printf '~!T\r\n' | sudo tee /dev/usb/lp0 ; sudo head -c 32 /dev/usb/lp0` — a TSPL printer replies with its model string.
+<sub>Munbyn's vendor specs list the 941 / 941B as 203 dpi TSPL; the 300 dpi "941P 3.0" has no public
+spec confirming TSPL yet, and the AirPrint "941AP" speaks OPL (excluded below). Polono is grouped with
+the TSPL clone family by community reports, but the oft-repeated "HPRT rebadge" claim has no public
+evidence (different FCC grantees), so it stays 🟡 until someone reports one.</sub>
+
+**Check yours in 10 seconds** (prints nothing): `cat /sys/class/usbmisc/lp0/device/ieee1284_id` —
+most TSPL printers self-describe with `TSPL` in the `CMD:` / `COMMAND SET:` field (the HZD950-PRO
+reports `COMMAND SET:TSPL`), no driver needed. You can also
+ask the printer itself: `printf '~!T\r\n' | sudo tee /dev/usb/lp0 >/dev/null; sudo timeout 2 head -c 32
+/dev/usb/lp0` — but many clones are **write-only over USB**, so no reply proves nothing; go by the id
+string or just try a print.
 
 **Not this driver** (different language): Munbyn **AirPrint / "OPL"** models (use AirPrint directly),
 **Phomemo M110 / M120 / D30 / M02** & mini printers (**ESC/POS**), **Brother QL** / **DYMO** (proprietary
@@ -145,10 +155,19 @@ The Pi renders, so **clients never install a driver** — they just add the shar
 
 | Option | Values | → TSPL |
 |---|---|---|
-| **Print Mode** (halftone) | **Default** (threshold — crisp text/barcodes) · **Gathering** (dither — greys/photos) · None · Diffusion · Error Diffusion | dither |
-| **Darkness** | `0`–`15` | `DENSITY` |
-| **Print Speed** | `1`–`6` in/sec | `SPEED` |
+| **Print Mode** (halftone) | **Default** (threshold — crisp text/barcodes) · **Gathering** (dither — greys/photos) · None · Diffusion · Error Diffusion | — (rendered into the bitmap) |
+| **Darkness** | `0`–`15` (default 8) | `DENSITY` |
+| **Print Speed** | `1`–`6` in/sec (default 4) · Printer default (sends nothing) | `SPEED` |
+| **Media tracking** | **Die-cut (gap)** · Black-mark · Continuous · Printer setting | `GAP` / `BLINE` |
 | **Resolution** | `203` / `300` dpi | — |
+
+Loaded **black-mark or continuous stock** instead of die-cut labels? Set it per queue —
+`-o MediaTracking=BlackMark` or `Continuous` — sending the default gap-sensor command to gapless
+media makes the printer hunt for a gap and error out. And after any media change, run the printer's
+**hold-the-feed-button calibration** and make sure the queue's page size matches the physical labels:
+TSPL firmwares skip or garble labels when `SIZE` disagrees with the stock. Note `PrinterDefault`
+sends no boundary command at all — and GAP/BLINE **persist in printer memory**, so such a queue
+inherits whatever the last job set (e.g. `GAP 0` from a Continuous queue sharing the printer).
 
 <details>
 <summary><b>Two queues: crisp labels + a "photo" (Gathering) queue</b></summary>
@@ -167,7 +186,8 @@ sudo lpadmin -p HZD950-Photo -E -v tspl://auto -P /usr/share/ppd/tspl/tspl-label
 ```
 Baked into the queue default, this works even for driverless clients (AirPrint/IPP-Everywhere) that can't
 show the option menus — they just pick the right queue. Values: **PrintMode** `5`=Default `3`=Gathering
-`0`=None `2`=Diffusion `4`=ErrorDiffusion · **Darkness** `0`–`15` · **PrintSpeed** = in/sec ×10.
+`0`=None `2`=Diffusion `4`=ErrorDiffusion · **Darkness** `0`–`15` · **PrintSpeed** = in/sec ×10
+(`0` = leave it to the printer) · **MediaTracking** `Gap`/`BlackMark`/`Continuous`/`PrinterDefault`.
 </details>
 
 <details>
@@ -179,7 +199,7 @@ your app ─► CUPS ─► gstoraster ─► rastertotspl ─► TSPL ─► ts
 ```
 
 - **`rastertotspl`** (C filter) reads the CUPS raster and emits TSPL —
-  `SIZE / GAP / DENSITY / SPEED / DIRECTION / REFERENCE / CLS / BITMAP … / PRINT`. The 8-bit page is
+  `SIZE / GAP|BLINE / DENSITY / SPEED / DIRECTION / REFERENCE / CLS / BITMAP … / PRINT`. The 8-bit page is
   flattened to 1-bit dots with the selected **Print Mode** dither (bitmaps, not printer fonts — so no
   per-model font quirks).
 - **`tspl`** (shell backend) writes the TSPL straight to the printer's `usblp` device, located **by USB
@@ -190,7 +210,8 @@ or the dnf/pacman/zypper equivalent), then `make`.
 
 **Multiple USB printers?** `tspl://auto` only matches known TSPL ids (never a laser); pin others by
 `vid:pid`/node. Drop in [`udev/99-tspl-label.rules`](udev/99-tspl-label.rules) for a stable
-`/dev/usb/tspl-label` symlink.
+`/dev/usb/tspl-label` symlink — and with **two label printers**, pin each queue to its per-unit
+`/dev/usb/tspl-label-<serial>` link (the bare symlink points at whichever enumerated last).
 
 **Notes:** CUPS 2.4 prints a "printer drivers are deprecated" warning — harmless; classic PPD+filter
 drivers work for years yet. Reverse-engineered cleanly from the printer's own TSPL output; no vendor code
@@ -203,8 +224,8 @@ It's free, but we do want it to actually work for you — and **your report is h
 [Supported printers](#supported-printers) list grows.** No hoops, just GitHub Issues:
 
 - **Your printer works — or doesn't?** → [**Open a printer report**](https://github.com/RunTheWall/tspl-cups-driver/issues/new?template=printer-report.yml).
-  It asks for your model, `lsusb` USB id, the `~!T` reply, and your distro/arch. Confirmed printers move
-  to ✅ and get added to auto-detect.
+  It asks for your model, `lsusb` USB id, the IEEE-1284 id (or `~!T` reply), and your distro/arch.
+  Confirmed printers move to ✅ and get added to auto-detect.
 - **Hit a bug?** → [**Open a bug report**](https://github.com/RunTheWall/tspl-cups-driver/issues/new?template=bug.yml)
   with your CUPS error log (`/var/log/cups/error_log` — please redact hostnames/IPs).
 - **Just a question?** → [open an issue](https://github.com/RunTheWall/tspl-cups-driver/issues/new) anyway; we read them all.

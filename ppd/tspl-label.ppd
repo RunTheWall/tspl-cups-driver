@@ -13,7 +13,9 @@
 *Product: "(HZD950-PRO)"
 *cupsVersion: 2.4
 *cupsModelNumber: 20
-*cupsManualCopies: True
+*% False = the device does copies itself: the filter turns the raster
+*% header's NumCopies into  PRINT 1,<n>  (bitmap sent once, printed n times).
+*cupsManualCopies: False
 *cupsFilter: "application/vnd.cups-raster 0 rastertotspl"
 *ModelName: "TSPL Label Printer"
 *ShortNickName: "TSPL Label (RTW)"
@@ -70,10 +72,12 @@
 *PaperDimension w144h72/2 x 1 in: "144 72"
 
 *HWMargins: 0 0 0 0
-*MaxMediaWidth: "324"
+*% 288 pt = 4.0 in: the honest cross-model limit. The common 4x6 engines print
+*% 812 dots at 203 dpi (= 4.0 in) / 1248 at 300 dpi; the filter clips wider.
+*MaxMediaWidth: "288"
 *MaxMediaHeight: "3240"
 *CustomPageSize True: "pop pop pop <</PageSize[5 -2 roll]/ImagingBBox null>>setpagedevice"
-*ParamCustomPageSize Width: 1 points 36 324
+*ParamCustomPageSize Width: 1 points 36 288
 *ParamCustomPageSize Height: 2 points 36 3240
 *ParamCustomPageSize WidthOffset: 3 points 0 0
 *ParamCustomPageSize HeightOffset: 4 points 0 0
@@ -81,7 +85,11 @@
 
 *OpenUI *PrintSpeed/Print Speed: PickOne
 *OrderDependency: 40 AnySetup *PrintSpeed
-*DefaultPrintSpeed: 50
+*% Default 4 in/sec: within every known model's range (HPRT N41 tops out at 4).
+*% "Printer default" sends no SPEED command at all — the printer's own
+*% stored/panel setting wins.
+*DefaultPrintSpeed: 40
+*PrintSpeed 0/Printer default: ""
 *PrintSpeed 10/1 in/sec (darkest): ""
 *PrintSpeed 20/2 in/sec: ""
 *PrintSpeed 30/3 in/sec: ""
@@ -89,6 +97,19 @@
 *PrintSpeed 50/5 in/sec: ""
 *PrintSpeed 60/6 in/sec: ""
 *CloseUI: *PrintSpeed
+
+*OpenUI *MediaTracking/Media tracking: PickOne
+*OrderDependency: 45 AnySetup *MediaTracking
+*% How the printer finds label boundaries: GAP (die-cut, transmissive sensor),
+*% BLINE (black-mark stock), GAP 0 (continuous roll), or send neither and use
+*% the printer's stored setting. Sending GAP to continuous/black-mark stock
+*% makes the firmware hunt for a gap that never comes and error out.
+*DefaultMediaTracking: Gap
+*MediaTracking Gap/Die-cut labels (gap sensor): ""
+*MediaTracking BlackMark/Black-mark stock: ""
+*MediaTracking Continuous/Continuous roll: ""
+*MediaTracking PrinterDefault/Use printer setting: ""
+*CloseUI: *MediaTracking
 
 *OpenUI *Darkness/Darkness: PickOne
 *OrderDependency: 50 AnySetup *Darkness
@@ -114,7 +135,7 @@
 *OpenUI *PrintMode/Print Mode: PickOne
 *OrderDependency: 60 AnySetup *PrintMode
 *DefaultPrintMode: 5
-*PrintMode 5/Default — sharp (text & barcodes): ""
+*PrintMode 5/Default - sharp (text & barcodes): ""
 *PrintMode 0/None (threshold): ""
 *PrintMode 2/Diffusion: ""
 *PrintMode 3/Gathering (clustered dots): ""

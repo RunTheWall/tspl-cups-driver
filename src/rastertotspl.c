@@ -15,19 +15,24 @@
  * ===========================================================================
  *
  *  Clean-room reimplementation (ARM/aarch64) of the vendor x86 "rastertoHZD",
- *  derived from its observed TSPL output:
- *     SIZE <w>mm,<h>mm / GAP / SPEED / DENSITY / DIRECTION 0,0 / REFERENCE h,v
- *     CLS / BITMAP 0,0,<wbytes>,<hdots>,1,<1bpp raster> / PRINT 1,<copies>
+ *  derived from its observed TSPL output (spacing normalized to the TSC spec,
+ *  which requires "SIZE 100 mm" — the form every other TSPL driver emits):
+ *     SIZE <w> mm,<h> mm / GAP|BLINE / SPEED / DENSITY / DIRECTION 0,0
+ *     REFERENCE h,v / CLS / BITMAP 0,0,<wbytes>,<hdots>,1,<1bpp> / PRINT 1,<n>
  *
- *  CUPS options honoured (same as the vendor PPD):
+ *  CUPS options honoured (same as the vendor PPD, plus MediaTracking):
  *     Darkness   (0..15)            -> DENSITY
- *     PrintSpeed (10..60 = ips x10) -> SPEED (in/sec)
+ *     PrintSpeed (10..60 = ips x10) -> SPEED (in/sec); 0 = omit (printer default)
+ *     MediaTracking Gap / BlackMark / Continuous / PrinterDefault
+ *                                   -> GAP 3 mm / BLINE 3 mm / GAP 0 / (omitted)
  *     Horizontal,Vertical (dots)    -> REFERENCE
  *     PrintMode  0 None / 2 Diffusion / 3 Gathering / 4 ErrorDiffusion / 5 Default
  *                -> halftone used to flatten 8bpp grey into 1bpp dots.
  *
  *  Input raster: cupsColorSpace 0 (W = luminance, 255=white, 0=black), 8bpp, 300dpi.
  *  CUPS filter argv: job-id user title copies options [filename]
+ *  (argv[4] copies is ignored by design — device copies come from the raster
+ *   header's NumCopies; see the comment at the copies computation below.)
  *
  *  SPDX-License-Identifier: MIT
  */
@@ -37,6 +42,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <strings.h>
 #include <math.h>
 #include <unistd.h>
 #include <fcntl.h>
@@ -99,18 +105,54 @@ int main(int argc, char *argv[])
     if (ppd) { ppdMarkDefaults(ppd); cupsMarkOptions(ppd, num_options, options); }
 
     int darkness  = opt_int(ppd, num_options, options, "Darkness",   8);
-    int speedval  = opt_int(ppd, num_options, options, "PrintSpeed", 50);
+    int speedval  = opt_int(ppd, num_options, options, "PrintSpeed", 40);
     int printmode = opt_int(ppd, num_options, options, "PrintMode",  PM_DEFAULT);
     int href      = opt_int(ppd, num_options, options, "Horizontal", 0);
     int vref      = opt_int(ppd, num_options, options, "Vertical",   0);
-    int copies    = atoi(argv[4]);
+
+    /* MediaTracking -> the boundary command. GAP/BLINE select the sensor;
+     * sending GAP to continuous or black-mark stock makes the firmware hunt
+     * for a gap that never comes (feeds a label + margin, then errors), so an
+     * unrecognized value must not silently fall through without a warning.
+     * Resolved to a static string here because ppdClose frees the choice. */
+    const char *track = "GAP 3 mm,0 mm\r\n";              /* Gap (die-cut) */
+    {
+        const char *v = cupsGetOption("MediaTracking", num_options, options);
+        ppd_choice_t *c;
+        if (!v && ppd && (c = ppdFindMarkedChoice(ppd, "MediaTracking")) != NULL)
+            v = c->choice;
+        if (v && *v) {
+            if      (!strcasecmp(v, "BlackMark"))      track = "BLINE 3 mm,0 mm\r\n";
+            else if (!strcasecmp(v, "Continuous"))     track = "GAP 0 mm,0 mm\r\n";
+            else if (!strcasecmp(v, "PrinterDefault")) track = ""; /* stored setting */
+            else if (strcasecmp(v, "Gap"))
+                fprintf(stderr, "WARNING: unknown MediaTracking '%s' — assuming "
+                        "Gap (die-cut); use Gap, BlackMark, Continuous or "
+                        "PrinterDefault\n", v);
+        }
+    }
     if (ppd) ppdClose(ppd);
 
-    if (copies < 1) copies = 1;
+    /* Copies deliberately do NOT come from argv[4]: upstream (pdftopdf) owns
+     * copy generation and tells us the per-page device-copy count in the
+     * raster header (NumCopies) — the PPD says cupsManualCopies False. Using
+     * argv[4] here would multiply again: N copies -> N^2 labels.
+     * Known edge, accepted on purpose: a job entering the chain ALREADY as
+     * CUPS raster (cupsfilter-prerendered, custom mime.convs) carries
+     * NumCopies=1, so -n N prints 1 label. Same semantics as CUPS's own
+     * rastertolabel; every mainstream path (PDF, image, AirPrint URF, PWG
+     * raster) sets NumCopies correctly. */
+
     if (darkness < 0) darkness = 0;
     if (darkness > 15) darkness = 15;
-    int speed_ips = speedval / 10;            /* 50 -> 5 in/sec */
-    if (speed_ips < 1) speed_ips = 4;
+    /* PPD values are ips x10 (50 -> 5 in/sec); accept bare ips (1..9) too so a
+     * hand-typed  -o PrintSpeed=3  does the intuitive thing. 0 (or negative)
+     * means "don't send SPEED at all" — the printer's own setting wins, the
+     * safest choice on models whose max differs (e.g. HPRT N41 caps at 4).
+     * Clamp to 6: the PPD tops out there, no studied model goes faster, and
+     * out-of-range SPEED behavior is undocumented on the clones. */
+    int speed_ips = (speedval >= 10) ? speedval / 10 : speedval;
+    if (speed_ips > 6) speed_ips = 6;
 
     /* ---- input raster ---- */
     int fd = 0;
@@ -129,15 +171,43 @@ int main(int argc, char *argv[])
         unsigned W = h.cupsWidth, H = h.cupsHeight;
         unsigned bpl = h.cupsBytesPerLine;
         if (W == 0 || H == 0) continue;
+        /* We only understand the raster our PPD asks for: 8-bit, 1 channel,
+         * W colorspace (255=white). Anything else would be misread — e.g. a
+         * K-space page (0=no ink) passes the size checks but would print
+         * photo-negative, near-solid black on thermal stock. Refuse loudly. */
+        if (h.cupsBitsPerPixel != 8 || h.cupsColorSpace != CUPS_CSPACE_W || bpl < W) {
+            fprintf(stderr, "ERROR: unexpected raster format (%ubpp, colorspace %u, "
+                    "%u bytes/line for %u px) — expected 8bpp grey (W); is the "
+                    "queue using our PPD?\n",
+                    h.cupsBitsPerPixel, h.cupsColorSpace, bpl, W);
+            return 1;
+        }
         unsigned resx = h.HWResolution[0] ? h.HWResolution[0] : 300;
         unsigned resy = h.HWResolution[1] ? h.HWResolution[1] : 300;
+
+        /* Clip to the print head: the common 4x6 engines are 812 dots wide at
+         * 203 dpi / 1248 at 300 dpi. The BITMAP byte count is taken literally
+         * by the firmware parser, and rows wider than the head clip or garble
+         * silently on the clones — better to crop deterministically here. */
+        unsigned maxw = (resx >= 300) ? 1248 : 812;
+        if (W > maxw) {
+            /* WARNING (not INFO) so CUPS surfaces it in the job log: queues
+             * created under the old PPD still allow 4.5in custom widths, and
+             * a silent clip would eat the right edge of a barcode. */
+            fprintf(stderr, "WARNING: page wider than the print head (%u > %u dots)"
+                    " — clipping the right edge\n", W, maxw);
+            W = maxw;
+        }
 
         /* ink[] : 0 = white, 255 = black  (input is W: 255=white) */
         int *ink = malloc((size_t)W * H * sizeof(int));
         unsigned char *line = malloc(bpl);
         if (!ink || !line) { fputs("ERROR: out of memory\n", stderr); return 1; }
         for (unsigned y = 0; y < H; y++) {
-            cupsRasterReadPixels(ras, line, bpl);
+            if (cupsRasterReadPixels(ras, line, bpl) < 1) {
+                fprintf(stderr, "ERROR: raster truncated at line %u of %u\n", y, H);
+                return 1;
+            }
             for (unsigned x = 0; x < W; x++)
                 ink[(size_t)y * W + x] = 255 - line[x];   /* W -> ink */
         }
@@ -146,6 +216,7 @@ int main(int argc, char *argv[])
         /* ---- halftone to 1bpp packed rows ---- */
         unsigned wbytes = (W + 7) / 8;
         unsigned char *bm = malloc((size_t)wbytes * H);
+        if (!bm) { fputs("ERROR: out of memory\n", stderr); return 1; }
         memset(bm, BLACK_BIT ? 0x00 : 0xFF, (size_t)wbytes * H);  /* start all-white */
 
         for (unsigned y = 0; y < H; y++) {
@@ -178,22 +249,29 @@ int main(int argc, char *argv[])
         }
         free(ink);
 
-        /* ---- TSPL ---- */
+        /* ---- TSPL ----
+         * Spacing: the TSC spec REQUIRES a space before the unit ("SIZE
+         * 100 mm") and every other TSPL implementation emits it that way.
+         * The leading CRLF is parser-resync insurance: if a previous job died
+         * mid-BITMAP the firmware may still be counting raw bytes, and a bare
+         * CRLF is the cheapest way back to command mode (pdf2tspl et al). */
         int wmm = (int)lround((double)W * 25.4 / resx);
         int hmm = (int)lround((double)H * 25.4 / resy);
-        char hdr[256];
-        snprintf(hdr, sizeof hdr,
-                 "SIZE %dmm,%dmm\r\nGAP 3 mm,0 mm\r\nDENSITY %d\r\nSPEED %d\r\n"
-                 "DIRECTION 0,0\r\nREFERENCE %d,%d\r\nCLS\r\nBITMAP 0,0,%u,%u,1,",
-                 wmm, hmm, darkness, speed_ips, href, vref, wbytes, H);
-        fputs(hdr, stdout);
+        printf("\r\nSIZE %d mm,%d mm\r\n", wmm, hmm);
+        fputs(track, stdout);
+        printf("DENSITY %d\r\n", darkness);
+        if (speed_ips >= 1)
+            printf("SPEED %d\r\n", speed_ips);
+        printf("DIRECTION 0,0\r\nREFERENCE %d,%d\r\nCLS\r\nBITMAP 0,0,%u,%u,1,",
+               href, vref, wbytes, H);
         fwrite(bm, 1, (size_t)wbytes * H, stdout);
-        printf("\r\nPRINT 1,%d\r\n", copies);
+        unsigned copies = h.NumCopies ? h.NumCopies : 1;
+        printf("\r\nPRINT 1,%u\r\n", copies);
         fflush(stdout);
         free(bm);
 
-        fprintf(stderr, "INFO: TSPL page %d: %ux%u dots (%dx%dmm) mode=%d density=%d speed=%d\n",
-                page, W, H, wmm, hmm, printmode, darkness, speed_ips);
+        fprintf(stderr, "INFO: TSPL page %d: %ux%u dots (%dx%dmm) mode=%d density=%d speed=%d copies=%u\n",
+                page, W, H, wmm, hmm, printmode, darkness, speed_ips, copies);
     }
 
     cupsRasterClose(ras);

@@ -1,7 +1,31 @@
-# Stable /dev symlink for a TSPL label printer (USB 0fe6:811e)
-# so its device path survives reboot USB re-enumeration when you have more than
-# one USB printer. Part of the free RTW driver — https://constly.com
+# Stable /dev symlinks for TSPL label printers, so the device path survives
+# reboot USB re-enumeration when you have more than one USB printer.
+# Covers the same USB ids the tspl backend auto-detects.
+# Part of the free RTW driver — https://constly.com
 #
 # Install:  sudo cp 99-tspl-label.rules /etc/udev/rules.d/
 #           sudo udevadm control --reload-rules && sudo udevadm trigger
-SUBSYSTEM=="usbmisc", KERNEL=="lp[0-9]*", ATTRS{idVendor}=="0fe6", ATTRS{idProduct}=="811e", SYMLINK+="usb/tspl-label"
+#
+# Symlinks created:
+#   /dev/usb/tspl-label            the (or a) TSPL label printer — NB: with
+#                                  TWO label printers attached this points at
+#                                  whichever enumerated last; pin those by the
+#                                  per-unit link instead:
+#   /dev/usb/tspl-label-<serial>   one per printer that reports a USB serial
+#
+# Known ids (keep in sync with KNOWN_IDS in backend/tspl):
+#   0fe6:811e  HZD950-PRO / HERO (tested)
+#   09c6:0426  Beeprt/JADENS/Munbyn-ITPP941 shared OEM engine
+#   20d1:7008  iDPRT SP410/SP420 (HPRT family)
+#   2d84:*     Zhuhai Poskey / Xprinter label printers (b806 DT-108B, b528 XP-460B)
+SUBSYSTEM!="usbmisc", GOTO="tspl_end"
+KERNEL!="lp[0-9]*", GOTO="tspl_end"
+ATTRS{idVendor}=="0fe6", ATTRS{idProduct}=="811e", GOTO="tspl_link"
+ATTRS{idVendor}=="09c6", ATTRS{idProduct}=="0426", GOTO="tspl_link"
+ATTRS{idVendor}=="20d1", ATTRS{idProduct}=="7008", GOTO="tspl_link"
+ATTRS{idVendor}=="2d84", GOTO="tspl_link"
+GOTO="tspl_end"
+LABEL="tspl_link"
+SYMLINK+="usb/tspl-label"
+ATTRS{serial}=="?*", SYMLINK+="usb/tspl-label-$attr{serial}"
+LABEL="tspl_end"

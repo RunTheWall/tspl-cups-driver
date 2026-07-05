@@ -67,7 +67,9 @@ if [ -z "$BIN" ]; then
         tmp="/tmp/rastertotspl.$$"
         if curl -fsSL "$REPO_URL/releases/latest/download/rastertotspl-$A" -o "$tmp" && [ -s "$tmp" ]; then
             chmod +x "$tmp"
-            "$tmp" >/dev/null 2>&1; rc=$?          # 126/127 == can't exec (wrong libc/arch)
+            rc=0; "$tmp" >/dev/null 2>&1 || rc=$?  # 126/127 == can't exec (wrong libc/arch);
+                                                   # (|| keeps set -e from killing us: the
+                                                   # no-args usage check exits 1 by design)
             if [ "$rc" != 126 ] && [ "$rc" != 127 ]; then BIN="$tmp"
             else echo "   that prebuilt won't run here — falling back to a source build."; rm -f "$tmp"; fi
         else echo "   couldn't download a prebuilt (no release asset for $A yet?)."; fi
@@ -96,6 +98,10 @@ cupsenable "$QUEUE" 2>/dev/null || true
 cupsaccept "$QUEUE" 2>/dev/null || true
 
 echo ">> enabling network sharing + one-click AirPrint..."
+# --share-printers covers same-LAN clients (the normal AirPrint case).
+# --remote-any additionally allows clients from ANY network (needed for the
+# cross-subnet setups the .mobileconfig supports) — if your Pi is reachable
+# from untrusted networks, tighten it later with:  sudo cupsctl --no-remote-any
 cupsctl --remote-any --share-printers 2>/dev/null || true
 # macOS/iOS only offer a driverless "AirPrint" add if CUPS drops the '_cups'
 # Bonjour subtype; keep _print (IPP Everywhere) + _universal (AirPrint).

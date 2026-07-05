@@ -32,9 +32,9 @@ body:
   - type: input
     id: tsplt
     attributes:
-      label: "TSPL check (~!T reply)"
-      description: "printf '~!T\\r\\n' | sudo tee /dev/usb/lp0 ; sudo head -c 32 /dev/usb/lp0"
-      placeholder: "e.g. HZD950-PRO"
+      label: "TSPL check (ieee1284 id, or ~!T reply)"
+      description: "cat /sys/class/usbmisc/lp0/device/ieee1284_id — or the ~!T probe from the README (no reply is fine; many clones are write-only over USB)."
+      placeholder: "e.g. MFG:iDPRT;CMD:TSPL;MDL:SP410  —  or  HZD950-PRO"
   - type: input
     id: env
     attributes:
