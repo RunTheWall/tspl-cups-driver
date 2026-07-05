@@ -111,8 +111,8 @@ int main(int argc, char *argv[])
     int vref      = opt_int(ppd, num_options, options, "Vertical",   0);
 
     /* MediaTracking: how the printer finds label boundaries. Copy the choice
-     * out before ppdClose frees it. */
-    char media[24] = "Gap";
+     * out before ppdClose frees it (PPD choice keywords are up to 40 chars). */
+    char media[41] = "Gap";
     {
         const char *v = cupsGetOption("MediaTracking", num_options, options);
         ppd_choice_t *c;
