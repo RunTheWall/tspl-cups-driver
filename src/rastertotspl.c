@@ -15,13 +15,16 @@
  * ===========================================================================
  *
  *  Clean-room reimplementation (ARM/aarch64) of the vendor x86 "rastertoHZD",
- *  derived from its observed TSPL output:
- *     SIZE <w>mm,<h>mm / GAP / SPEED / DENSITY / DIRECTION 0,0 / REFERENCE h,v
- *     CLS / BITMAP 0,0,<wbytes>,<hdots>,1,<1bpp raster> / PRINT 1,<copies>
+ *  derived from its observed TSPL output (spacing normalized to the TSC spec,
+ *  which requires "SIZE 100 mm" — the form every other TSPL driver emits):
+ *     SIZE <w> mm,<h> mm / GAP|BLINE / SPEED / DENSITY / DIRECTION 0,0
+ *     REFERENCE h,v / CLS / BITMAP 0,0,<wbytes>,<hdots>,1,<1bpp> / PRINT 1,<n>
  *
- *  CUPS options honoured (same as the vendor PPD):
+ *  CUPS options honoured (same as the vendor PPD, plus MediaTracking):
  *     Darkness   (0..15)            -> DENSITY
- *     PrintSpeed (10..60 = ips x10) -> SPEED (in/sec)
+ *     PrintSpeed (10..60 = ips x10) -> SPEED (in/sec); 0 = omit (printer default)
+ *     MediaTracking Gap / BlackMark / Continuous / PrinterDefault
+ *                                   -> GAP 3 mm / BLINE 3 mm / GAP 0 / (omitted)
  *     Horizontal,Vertical (dots)    -> REFERENCE
  *     PrintMode  0 None / 2 Diffusion / 3 Gathering / 4 ErrorDiffusion / 5 Default
  *                -> halftone used to flatten 8bpp grey into 1bpp dots.
@@ -39,6 +42,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <strings.h>
 #include <math.h>
 #include <unistd.h>
 #include <fcntl.h>
@@ -101,10 +105,21 @@ int main(int argc, char *argv[])
     if (ppd) { ppdMarkDefaults(ppd); cupsMarkOptions(ppd, num_options, options); }
 
     int darkness  = opt_int(ppd, num_options, options, "Darkness",   8);
-    int speedval  = opt_int(ppd, num_options, options, "PrintSpeed", 50);
+    int speedval  = opt_int(ppd, num_options, options, "PrintSpeed", 40);
     int printmode = opt_int(ppd, num_options, options, "PrintMode",  PM_DEFAULT);
     int href      = opt_int(ppd, num_options, options, "Horizontal", 0);
     int vref      = opt_int(ppd, num_options, options, "Vertical",   0);
+
+    /* MediaTracking: how the printer finds label boundaries. Copy the choice
+     * out before ppdClose frees it. */
+    char media[24] = "Gap";
+    {
+        const char *v = cupsGetOption("MediaTracking", num_options, options);
+        ppd_choice_t *c;
+        if (!v && ppd && (c = ppdFindMarkedChoice(ppd, "MediaTracking")) != NULL)
+            v = c->choice;
+        if (v && *v) snprintf(media, sizeof media, "%s", v);
+    }
     if (ppd) ppdClose(ppd);
 
     /* Copies deliberately do NOT come from argv[4]: upstream (pdftopdf) owns
@@ -115,10 +130,20 @@ int main(int argc, char *argv[])
     if (darkness < 0) darkness = 0;
     if (darkness > 15) darkness = 15;
     /* PPD values are ips x10 (50 -> 5 in/sec); accept bare ips (1..9) too so a
-     * hand-typed  -o PrintSpeed=3  does the intuitive thing. */
+     * hand-typed  -o PrintSpeed=3  does the intuitive thing. 0 (or negative)
+     * means "don't send SPEED at all" — the printer's own setting wins, the
+     * safest choice on models whose max differs (e.g. HPRT N41 caps at 4). */
     int speed_ips = (speedval >= 10) ? speedval / 10 : speedval;
-    if (speed_ips < 1)  speed_ips = 1;
     if (speed_ips > 15) speed_ips = 15;       /* nothing consumer prints faster */
+
+    /* Media-boundary command per the tracking mode. GAP/BLINE select the
+     * sensor; sending GAP to continuous or black-mark stock makes the firmware
+     * hunt for a gap that never comes (feeds a label + margin, then errors). */
+    const char *track;
+    if      (!strcasecmp(media, "BlackMark"))      track = "BLINE 3 mm,0 mm\r\n";
+    else if (!strcasecmp(media, "Continuous"))     track = "GAP 0 mm,0 mm\r\n";
+    else if (!strcasecmp(media, "PrinterDefault")) track = "";  /* stored setting */
+    else                                           track = "GAP 3 mm,0 mm\r\n";
 
     /* ---- input raster ---- */
     int fd = 0;
@@ -147,6 +172,17 @@ int main(int argc, char *argv[])
         }
         unsigned resx = h.HWResolution[0] ? h.HWResolution[0] : 300;
         unsigned resy = h.HWResolution[1] ? h.HWResolution[1] : 300;
+
+        /* Clip to the print head: the common 4x6 engines are 812 dots wide at
+         * 203 dpi / 1248 at 300 dpi. The BITMAP byte count is taken literally
+         * by the firmware parser, and rows wider than the head clip or garble
+         * silently on the clones — better to crop deterministically here. */
+        unsigned maxw = (resx >= 300) ? 1248 : 812;
+        if (W > maxw) {
+            fprintf(stderr, "INFO: page wider than the print head (%u > %u dots) — "
+                    "clipping the right edge\n", W, maxw);
+            W = maxw;
+        }
 
         /* ink[] : 0 = white, 255 = black  (input is W: 255=white) */
         int *ink = malloc((size_t)W * H * sizeof(int));
@@ -198,15 +234,21 @@ int main(int argc, char *argv[])
         }
         free(ink);
 
-        /* ---- TSPL ---- */
+        /* ---- TSPL ----
+         * Spacing: the TSC spec REQUIRES a space before the unit ("SIZE
+         * 100 mm") and every other TSPL implementation emits it that way.
+         * The leading CRLF is parser-resync insurance: if a previous job died
+         * mid-BITMAP the firmware may still be counting raw bytes, and a bare
+         * CRLF is the cheapest way back to command mode (pdf2tspl et al). */
         int wmm = (int)lround((double)W * 25.4 / resx);
         int hmm = (int)lround((double)H * 25.4 / resy);
-        char hdr[256];
-        snprintf(hdr, sizeof hdr,
-                 "SIZE %dmm,%dmm\r\nGAP 3 mm,0 mm\r\nDENSITY %d\r\nSPEED %d\r\n"
-                 "DIRECTION 0,0\r\nREFERENCE %d,%d\r\nCLS\r\nBITMAP 0,0,%u,%u,1,",
-                 wmm, hmm, darkness, speed_ips, href, vref, wbytes, H);
-        fputs(hdr, stdout);
+        printf("\r\nSIZE %d mm,%d mm\r\n", wmm, hmm);
+        fputs(track, stdout);
+        printf("DENSITY %d\r\n", darkness);
+        if (speed_ips >= 1)
+            printf("SPEED %d\r\n", speed_ips);
+        printf("DIRECTION 0,0\r\nREFERENCE %d,%d\r\nCLS\r\nBITMAP 0,0,%u,%u,1,",
+               href, vref, wbytes, H);
         fwrite(bm, 1, (size_t)wbytes * H, stdout);
         unsigned copies = h.NumCopies ? h.NumCopies : 1;
         printf("\r\nPRINT 1,%u\r\n", copies);

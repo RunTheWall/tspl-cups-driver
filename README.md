@@ -52,14 +52,19 @@ Confirmed and add its USB id to auto-detect.
 | Printer | dpi | USB id | Status |
 |---|---|---|---|
 | **HZD950-PRO / HERO** | 300 | `0fe6:811e` | ✅ **Tested** |
-| **Munbyn ITPP941 / 941B / 941P** | 203 · 300 | `09c6:0426` / generic | 🟢 TSPL |
+| **Munbyn ITPP941 / 941B** (941P: see note) | 203 | `09c6:0426` / generic | 🟢 TSPL |
 | **iDPRT SP410 / SP420** | 203 | `20d1:7008` | 🟢 TSPL |
-| **HPRT N41 / SL42** | 203 | 20d1 family | 🟢 TSPL |
+| **HPRT N41 / SL42** | 203 | `20d1` family (inferred) | 🟢 TSPL |
 | **Beeprt BY-426** (shared OEM engine) | 203 | `09c6:0426` | 🟢 TSPL |
-| **JADENS JD-168** | 203 | `09c6:0426` | 🟢 TSPL |
-| **Polono PL420** | 203 | HPRT rebadge | 🟢 TSPL |
-| **Xprinter XP-420B / 460B / 470B** | 203 · 300 | varies | 🟢 TSPL |
+| **JADENS JD-168 / JD-268BT** | 203 | `09c6:0426` | 🟢 TSPL |
+| **Polono PL420** | 203 | unknown | 🟡 community |
+| **Xprinter XP-420B / 460B / 470B** | 203 | `2d84:b528` (460B) / varies | 🟢 TSPL |
 | **Phomemo PM-241 / D520** | 203 | (unverified) | 🟡 community |
+
+<sub>Munbyn's vendor specs list the 941 / 941B as 203 dpi TSPL; the 300 dpi "941P 3.0" has no public
+spec confirming TSPL yet, and the AirPrint "941AP" speaks OPL (excluded below). Polono is grouped with
+the TSPL clone family by community reports, but the oft-repeated "HPRT rebadge" claim has no public
+evidence (different FCC grantees), so it stays 🟡 until someone reports one.</sub>
 
 **Check yours in 10 seconds** (prints nothing): `printf '~!T\r\n' | sudo tee /dev/usb/lp0 ; sudo head -c 32 /dev/usb/lp0` — a TSPL printer replies with its model string.
 

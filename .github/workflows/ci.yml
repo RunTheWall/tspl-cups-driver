@@ -17,8 +17,11 @@ jobs:
         run: sudo apt-get update && sudo apt-get install -y --no-install-recommends build-essential libcups2-dev
       - name: Build
         run: make -s && file src/rastertotspl
+      - name: Smoke test (synthetic raster -> expected TSPL bytes)
+        run: sh tests/smoke.sh
       - name: Shellcheck scripts parse
         run: |
           sh -n install.sh
           sh -n packaging/deb/build.sh
           sh -n backend/tspl
+          sh -n tests/smoke.sh
