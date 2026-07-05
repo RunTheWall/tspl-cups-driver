@@ -66,7 +66,11 @@ spec confirming TSPL yet, and the AirPrint "941AP" speaks OPL (excluded below). 
 the TSPL clone family by community reports, but the oft-repeated "HPRT rebadge" claim has no public
 evidence (different FCC grantees), so it stays 🟡 until someone reports one.</sub>
 
-**Check yours in 10 seconds** (prints nothing): `printf '~!T\r\n' | sudo tee /dev/usb/lp0 ; sudo head -c 32 /dev/usb/lp0` — a TSPL printer replies with its model string.
+**Check yours in 10 seconds** (prints nothing): `cat /sys/class/usbmisc/lp0/device/ieee1284_id` —
+most TSPL printers self-describe with `CMD:TSPL` (or `TSPL2`) in there, no driver needed. You can also
+ask the printer itself: `printf '~!T\r\n' | sudo tee /dev/usb/lp0 >/dev/null; sudo timeout 2 head -c 32
+/dev/usb/lp0` — but many clones are **write-only over USB**, so no reply proves nothing; go by the id
+string or just try a print.
 
 **Not this driver** (different language): Munbyn **AirPrint / "OPL"** models (use AirPrint directly),
 **Phomemo M110 / M120 / D30 / M02** & mini printers (**ESC/POS**), **Brother QL** / **DYMO** (proprietary
@@ -150,10 +154,17 @@ The Pi renders, so **clients never install a driver** — they just add the shar
 
 | Option | Values | → TSPL |
 |---|---|---|
-| **Print Mode** (halftone) | **Default** (threshold — crisp text/barcodes) · **Gathering** (dither — greys/photos) · None · Diffusion · Error Diffusion | dither |
-| **Darkness** | `0`–`15` | `DENSITY` |
-| **Print Speed** | `1`–`6` in/sec | `SPEED` |
+| **Print Mode** (halftone) | **Default** (threshold — crisp text/barcodes) · **Gathering** (dither — greys/photos) · None · Diffusion · Error Diffusion | — (rendered into the bitmap) |
+| **Darkness** | `0`–`15` (default 8) | `DENSITY` |
+| **Print Speed** | `1`–`6` in/sec (default 4) · Printer default (sends nothing) | `SPEED` |
+| **Media tracking** | **Die-cut (gap)** · Black-mark · Continuous · Printer setting | `GAP` / `BLINE` |
 | **Resolution** | `203` / `300` dpi | — |
+
+Loaded **black-mark or continuous stock** instead of die-cut labels? Set it per queue —
+`-o MediaTracking=BlackMark` or `Continuous` — sending the default gap-sensor command to gapless
+media makes the printer hunt for a gap and error out. And after any media change, run the printer's
+**hold-the-feed-button calibration** and make sure the queue's page size matches the physical labels:
+TSPL firmwares skip or garble labels when `SIZE` disagrees with the stock.
 
 <details>
 <summary><b>Two queues: crisp labels + a "photo" (Gathering) queue</b></summary>
@@ -172,7 +183,8 @@ sudo lpadmin -p HZD950-Photo -E -v tspl://auto -P /usr/share/ppd/tspl/tspl-label
 ```
 Baked into the queue default, this works even for driverless clients (AirPrint/IPP-Everywhere) that can't
 show the option menus — they just pick the right queue. Values: **PrintMode** `5`=Default `3`=Gathering
-`0`=None `2`=Diffusion `4`=ErrorDiffusion · **Darkness** `0`–`15` · **PrintSpeed** = in/sec ×10.
+`0`=None `2`=Diffusion `4`=ErrorDiffusion · **Darkness** `0`–`15` · **PrintSpeed** = in/sec ×10
+(`0` = leave it to the printer) · **MediaTracking** `Gap`/`BlackMark`/`Continuous`/`PrinterDefault`.
 </details>
 
 <details>
@@ -184,7 +196,7 @@ your app ─► CUPS ─► gstoraster ─► rastertotspl ─► TSPL ─► ts
 ```
 
 - **`rastertotspl`** (C filter) reads the CUPS raster and emits TSPL —
-  `SIZE / GAP / DENSITY / SPEED / DIRECTION / REFERENCE / CLS / BITMAP … / PRINT`. The 8-bit page is
+  `SIZE / GAP|BLINE / DENSITY / SPEED / DIRECTION / REFERENCE / CLS / BITMAP … / PRINT`. The 8-bit page is
   flattened to 1-bit dots with the selected **Print Mode** dither (bitmaps, not printer fonts — so no
   per-model font quirks).
 - **`tspl`** (shell backend) writes the TSPL straight to the printer's `usblp` device, located **by USB

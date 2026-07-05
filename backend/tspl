@@ -10,7 +10,9 @@
 #  detaches usblp and causes a first-job-after-boot race.
 #
 #  Confirm your printer really speaks TSPL (prints nothing):
-#     printf '~!T\r\n' | sudo tee /dev/usb/lp0 ; sudo head -c 32 /dev/usb/lp0
+#     cat /sys/class/usbmisc/lp0/device/ieee1284_id     # look for CMD:TSPL
+#  (~!T also returns a model string per spec, but many clones are write-only
+#  over USB — don't trust a silent read.)
 #
 #  Device URI:
 #     tspl://auto            the TSPL label printer (see auto-match below)
