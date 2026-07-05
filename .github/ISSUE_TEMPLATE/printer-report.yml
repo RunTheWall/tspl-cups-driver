@@ -1,0 +1,47 @@
+name: "🖨️ Printer report (works / doesn't work)"
+description: "Tell us how your TSPL label printer does with this driver — this is how the Supported list grows."
+title: "[printer] "
+labels: ["printer-report"]
+body:
+  - type: markdown
+    attributes:
+      value: "Thanks! Confirmed printers get moved to ✅ in the README and added to auto-detect. A few quick fields make that possible."
+  - type: input
+    id: model
+    attributes:
+      label: Printer model
+      placeholder: "e.g. Munbyn ITPP941, iDPRT SP410, HPRT N41"
+    validations:
+      required: true
+  - type: dropdown
+    id: result
+    attributes:
+      label: Does it work?
+      options:
+        - "✅ Works great"
+        - "⚠️ Works with tweaks (say which below)"
+        - "❌ Doesn't work"
+    validations:
+      required: true
+  - type: input
+    id: usbid
+    attributes:
+      label: USB id
+      description: "Run `lsusb` and paste the id for your printer."
+      placeholder: "20d1:7008"
+  - type: input
+    id: tsplt
+    attributes:
+      label: "TSPL check (~!T reply)"
+      description: "printf '~!T\\r\\n' | sudo tee /dev/usb/lp0 ; sudo head -c 32 /dev/usb/lp0"
+      placeholder: "e.g. HZD950-PRO"
+  - type: input
+    id: env
+    attributes:
+      label: Distro · arch · dpi
+      placeholder: "Raspberry Pi OS Trixie · arm64 · 203 dpi"
+  - type: textarea
+    id: details
+    attributes:
+      label: Anything else? (tweaks used, or the failure)
+      description: "If it failed, paste the relevant lines from `/var/log/cups/error_log` — please redact any hostnames/IPs."

@@ -197,6 +197,20 @@ drivers work for years yet. Reverse-engineered cleanly from the printer's own TS
 is redistributed.
 </details>
 
+## Something not working? Tell us 🖨️
+
+It's free, but we do want it to actually work for you — and **your report is how the
+[Supported printers](#supported-printers) list grows.** No hoops, just GitHub Issues:
+
+- **Your printer works — or doesn't?** → [**Open a printer report**](https://github.com/RunTheWall/tspl-cups-driver/issues/new?template=printer-report.yml).
+  It asks for your model, `lsusb` USB id, the `~!T` reply, and your distro/arch. Confirmed printers move
+  to ✅ and get added to auto-detect.
+- **Hit a bug?** → [**Open a bug report**](https://github.com/RunTheWall/tspl-cups-driver/issues/new?template=bug.yml)
+  with your CUPS error log (`/var/log/cups/error_log` — please redact hostnames/IPs).
+- **Just a question?** → [open an issue](https://github.com/RunTheWall/tspl-cups-driver/issues/new) anyway; we read them all.
+
+If the driver saved you time, the nicest thank-you is trying [Constly](https://constly.com) 💙.
+
 ## License
 
 MIT © Run The Wall. See [LICENSE](LICENSE). Built and maintained for free — support us by trying

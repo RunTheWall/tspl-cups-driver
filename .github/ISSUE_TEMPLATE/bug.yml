@@ -1,0 +1,23 @@
+name: "🐞 Something's broken"
+description: "The driver won't build, install, or print correctly."
+title: "[bug] "
+labels: ["bug"]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened?
+      description: "What you did, what you expected, what happened instead."
+    validations:
+      required: true
+  - type: input
+    id: env
+    attributes:
+      label: Printer · distro · arch · install method
+      placeholder: "HZD950-PRO · Debian 13 · arm64 · apt repo"
+  - type: textarea
+    id: log
+    attributes:
+      label: CUPS error log
+      description: "Relevant lines from `/var/log/cups/error_log` (redact hostnames/IPs), and any `install.sh` output."
+      render: shell
