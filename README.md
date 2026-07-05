@@ -67,7 +67,8 @@ the TSPL clone family by community reports, but the oft-repeated "HPRT rebadge" 
 evidence (different FCC grantees), so it stays 🟡 until someone reports one.</sub>
 
 **Check yours in 10 seconds** (prints nothing): `cat /sys/class/usbmisc/lp0/device/ieee1284_id` —
-most TSPL printers self-describe with `CMD:TSPL` (or `TSPL2`) in there, no driver needed. You can also
+most TSPL printers self-describe with `TSPL` in the `CMD:` / `COMMAND SET:` field (the HZD950-PRO
+reports `COMMAND SET:TSPL`), no driver needed. You can also
 ask the printer itself: `printf '~!T\r\n' | sudo tee /dev/usb/lp0 >/dev/null; sudo timeout 2 head -c 32
 /dev/usb/lp0` — but many clones are **write-only over USB**, so no reply proves nothing; go by the id
 string or just try a print.
