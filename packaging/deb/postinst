@@ -8,6 +8,9 @@ tspl-cups-driver installed. Create the print queue once with:
        -P /usr/share/ppd/tspl/tspl-label.ppd \
        -o printer-is-shared=true -o media=na_index-4x6_4x6in
 
+(203 dpi printer? add -o Resolution=203dpi. Black-mark or continuous
+stock? add -o MediaTracking=BlackMark / Continuous.)
+
 For one-click AirPrint from Macs / iPhones:
 
   echo 'BrowseDNSSDSubTypes _print,_universal' | sudo tee -a /etc/cups/cupsd.conf

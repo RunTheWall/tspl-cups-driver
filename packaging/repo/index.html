@@ -49,7 +49,9 @@ sudo dnf install tspl-cups-driver</code></pre>
   <h2>After installing</h2>
   <p>The package installs the driver files. Create the print queue once:</p>
 <pre><code>sudo lpadmin -p HZD950 -E -v tspl://auto -P /usr/share/ppd/tspl/tspl-label.ppd \
-     -o printer-is-shared=true -o media=na_index-4x6_4x6in</code></pre>
+     -o printer-is-shared=true -o media=na_index-4x6_4x6in
+# 203 dpi printer?  add:  -o Resolution=203dpi
+# black-mark / continuous stock?  add:  -o MediaTracking=BlackMark  (or Continuous)</code></pre>
 
   <h2>Signing key</h2>
   <p class="fp">All metadata and repos are signed with:<br>

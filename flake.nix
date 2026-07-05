@@ -11,7 +11,7 @@
       packages = forAll (pkgs: {
         default = pkgs.stdenv.mkDerivation {
           pname = "tspl-cups-driver";
-          version = "1.2.0";
+          version = "1.3.0";
           src = self;
           nativeBuildInputs = [ pkgs.cups ];   # provides cups-config
           buildInputs = [ pkgs.cups ];
