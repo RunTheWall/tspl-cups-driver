@@ -14,6 +14,6 @@ pkgbase = tspl-cups-driver
 	replaces = hzd950-cups-driver
 	provides = hzd950-cups-driver
 	source = tspl-cups-driver-1.3.0.tar.gz::https://github.com/RunTheWall/tspl-cups-driver/archive/refs/tags/v1.3.0.tar.gz
-	sha256sums = SKIP
+	sha256sums = 33599ebf29148f1c92368932c4f3985a81d7ae9e2108ef3f669197d2fa13ebf9
 
 pkgname = tspl-cups-driver
