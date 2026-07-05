@@ -16,9 +16,9 @@ jobs:
       - name: Install build deps
         run: sudo apt-get update && sudo apt-get install -y --no-install-recommends build-essential libcups2-dev
       - name: Build
-        run: make -s && file src/rastertohzd
+        run: make -s && file src/rastertotspl
       - name: Shellcheck scripts parse
         run: |
           sh -n install.sh
           sh -n packaging/deb/build.sh
-          sh -n backend/hzd950
+          sh -n backend/tspl

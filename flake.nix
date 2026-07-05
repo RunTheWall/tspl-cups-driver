@@ -1,5 +1,5 @@
 {
-  description = "Free CUPS driver for HZD950-PRO / HERO TSPL thermal label printers (by Run The Wall - https://constly.com)";
+  description = "Free CUPS driver for TSPL/TSPL2 thermal label printers (by Run The Wall - https://constly.com)";
 
   inputs.nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
 
@@ -10,22 +10,22 @@
     in {
       packages = forAll (pkgs: {
         default = pkgs.stdenv.mkDerivation {
-          pname = "hzd950-cups-driver";
-          version = "1.1.0";
+          pname = "tspl-cups-driver";
+          version = "1.2.0";
           src = self;
           nativeBuildInputs = [ pkgs.cups ];   # provides cups-config
           buildInputs = [ pkgs.cups ];
           dontConfigure = true;
           installPhase = ''
             runHook preInstall
-            install -Dm0755 src/rastertohzd    $out/lib/cups/filter/rastertohzd
-            install -Dm0755 backend/hzd950     $out/lib/cups/backend/hzd950
-            install -Dm0644 ppd/HZD950-PRO.ppd $out/share/cups/model/HZD950-PRO.ppd
+            install -Dm0755 src/rastertotspl    $out/lib/cups/filter/rastertotspl
+            install -Dm0755 backend/tspl     $out/lib/cups/backend/tspl
+            install -Dm0644 ppd/tspl-label.ppd $out/share/cups/model/tspl-label.ppd
             runHook postInstall
           '';
           meta = with pkgs.lib; {
-            description = "CUPS raster->TSPL driver for HZD950-PRO / HERO label printers";
-            homepage = "https://github.com/RunTheWall/hzd950-cups-driver";
+            description = "CUPS raster->TSPL driver for TSPL thermal label printers";
+            homepage = "https://github.com/RunTheWall/tspl-cups-driver";
             license = licenses.mit;
             platforms = platforms.linux;
           };

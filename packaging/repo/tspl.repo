@@ -1,0 +1,7 @@
+[tspl]
+name=TSPL label-printer CUPS driver (Run The Wall)
+baseurl=https://runthewall.github.io/tspl-cups-driver/rpm
+enabled=1
+gpgcheck=0
+repo_gpgcheck=1
+gpgkey=https://runthewall.github.io/tspl-cups-driver/rpm/RPM-GPG-KEY-tspl

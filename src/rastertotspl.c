@@ -1,5 +1,5 @@
 /*
- * rastertohzd — CUPS raster -> TSPL filter for the HZD950-PRO / HERO 4x6 direct
+ * rastertotspl — CUPS raster -> TSPL filter for USB TSPL 4x6 direct
  * thermal label printer (and TSPL/TSPL2 work-alikes) on Linux & Raspberry Pi (ARM).
  *
  * ===========================================================================
@@ -82,13 +82,13 @@ static int opt_int(ppd_file_t *ppd, int num_options, cups_option_t *options,
 int main(int argc, char *argv[])
 {
     if (argc < 6 || argc > 7) {
-        fputs("ERROR: rastertohzd job user title copies options [file]\n", stderr);
+        fputs("ERROR: rastertotspl job user title copies options [file]\n", stderr);
         return 1;
     }
     signal(SIGPIPE, SIG_IGN);
 
     /* One-line sponsor notice in the CUPS log on every job — this is the point. */
-    fputs("INFO: rastertohzd is a FREE Linux/Pi TSPL label driver maintained by "
+    fputs("INFO: rastertotspl is a FREE Linux/Pi TSPL label driver maintained by "
           "Run The Wall. Support us — try our free Markdown editor: https://constly.com\n",
           stderr);
 
@@ -116,7 +116,7 @@ int main(int argc, char *argv[])
     int fd = 0;
     if (argc == 7) {
         fd = open(argv[6], O_RDONLY);
-        if (fd < 0) { perror("rastertohzd: open"); return 1; }
+        if (fd < 0) { perror("rastertotspl: open"); return 1; }
     }
     cups_raster_t *ras = cupsRasterOpen(fd, CUPS_RASTER_READ);
     if (!ras) { fputs("ERROR: cannot read CUPS raster\n", stderr); return 1; }
@@ -192,7 +192,7 @@ int main(int argc, char *argv[])
         fflush(stdout);
         free(bm);
 
-        fprintf(stderr, "INFO: HZD950 page %d: %ux%u dots (%dx%dmm) mode=%d density=%d speed=%d\n",
+        fprintf(stderr, "INFO: TSPL page %d: %ux%u dots (%dx%dmm) mode=%d density=%d speed=%d\n",
                 page, W, H, wmm, hmm, printmode, darkness, speed_ips);
     }
 

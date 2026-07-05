@@ -27,9 +27,9 @@ jobs:
               apt-get update
               apt-get install -y --no-install-recommends build-essential libcups2-dev dpkg-dev file
               make -s
-              file src/rastertohzd
+              file src/rastertotspl
               mkdir -p dist
-              cp src/rastertohzd dist/rastertohzd-${ARCH}
+              cp src/rastertotspl dist/rastertotspl-${ARCH}
               sh packaging/deb/build.sh ${ARCH} ${VER} dist
               ls -l dist
             '
@@ -56,10 +56,10 @@ jobs:
             -e VER="$VER" fedora:latest bash -eux -c '
               dnf -y install gcc make cups-devel rpm-build rpmdevtools tar >/dev/null
               rpmdev-setuptree
-              tar czf ~/rpmbuild/SOURCES/hzd950-cups-driver-${VER}.tar.gz \
-                  --transform "s,^,hzd950-cups-driver-${VER}/," \
+              tar czf ~/rpmbuild/SOURCES/tspl-cups-driver-${VER}.tar.gz \
+                  --transform "s,^,tspl-cups-driver-${VER}/," \
                   src backend ppd Makefile README.md LICENSE
-              rpmbuild -bb --define "ver ${VER}" packaging/rpm/hzd950-cups-driver.spec
+              rpmbuild -bb --define "ver ${VER}" packaging/rpm/tspl-cups-driver.spec
               mkdir -p dist && cp ~/rpmbuild/RPMS/*/*.rpm dist/
               ls -l dist
             '
@@ -81,7 +81,7 @@ jobs:
       - name: Collect assets
         run: |
           mkdir -p dist
-          find art -type f \( -name '*.deb' -o -name '*.rpm' -o -name 'rastertohzd-*' \) -exec cp {} dist/ \;
+          find art -type f \( -name '*.deb' -o -name '*.rpm' -o -name 'rastertotspl-*' \) -exec cp {} dist/ \;
           ( cd dist && sha256sum * > SHA256SUMS )
           ls -l dist
       - name: Publish release
@@ -133,7 +133,7 @@ jobs:
             gzip -9c Packages > Packages.gz
             apt-ftparchive \
               -o APT::FTPArchive::Release::Origin=RunTheWall \
-              -o APT::FTPArchive::Release::Label=hzd950-cups-driver \
+              -o APT::FTPArchive::Release::Label=tspl-cups-driver \
               -o APT::FTPArchive::Release::Suite=stable \
               -o APT::FTPArchive::Release::Codename=stable \
               release . > Release
@@ -143,8 +143,8 @@ jobs:
           gpg --armor --export "$KEY" > site/apt/KEY.asc
 
           # --- dnf: repodata with signed repomd (repo_gpgcheck) ---
-          cp packaging/repo/RPM-GPG-KEY-hzd950 site/rpm/RPM-GPG-KEY-hzd950
-          cp packaging/repo/hzd950.repo        site/rpm/hzd950.repo
+          cp packaging/repo/RPM-GPG-KEY-tspl site/rpm/RPM-GPG-KEY-tspl
+          cp packaging/repo/tspl.repo        site/rpm/tspl.repo
           ( cd site/rpm
             createrepo_c .
             $SIGN --detach-sign --armor repodata/repomd.xml )

@@ -1,8 +1,8 @@
-pkgbase = hzd950-cups-driver
-	pkgdesc = Free CUPS driver for HZD950-PRO / HERO TSPL thermal label printers (by Run The Wall - https://constly.com)
-	pkgver = 1.1.0
+pkgbase = tspl-cups-driver
+	pkgdesc = Free CUPS driver for TSPL/TSPL2 thermal label printers (by Run The Wall - https://constly.com)
+	pkgver = 1.2.0
 	pkgrel = 1
-	url = https://github.com/RunTheWall/hzd950-cups-driver
+	url = https://github.com/RunTheWall/tspl-cups-driver
 	arch = x86_64
 	arch = aarch64
 	arch = armv7h
@@ -10,7 +10,10 @@ pkgbase = hzd950-cups-driver
 	makedepends = gcc
 	makedepends = make
 	depends = cups
-	source = hzd950-cups-driver-1.1.0.tar.gz::https://github.com/RunTheWall/hzd950-cups-driver/archive/refs/tags/v1.1.0.tar.gz
+	conflicts = hzd950-cups-driver
+	replaces = hzd950-cups-driver
+	provides = hzd950-cups-driver
+	source = tspl-cups-driver-1.2.0.tar.gz::https://github.com/RunTheWall/tspl-cups-driver/archive/refs/tags/v1.2.0.tar.gz
 	sha256sums = SKIP
 
-pkgname = hzd950-cups-driver
+pkgname = tspl-cups-driver

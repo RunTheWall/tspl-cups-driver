@@ -2,10 +2,10 @@
 set -e
 cat <<'MSG'
 
-hzd950-cups-driver installed. Create the print queue once with:
+tspl-cups-driver installed. Create the print queue once with:
 
-  sudo lpadmin -p HZD950 -E -v hzd950:auto \
-       -P /usr/share/ppd/hzd950/HZD950-PRO.ppd \
+  sudo lpadmin -p HZD950 -E -v tspl://auto \
+       -P /usr/share/ppd/tspl/tspl-label.ppd \
        -o printer-is-shared=true -o media=na_index-4x6_4x6in
 
 For one-click AirPrint from Macs / iPhones:

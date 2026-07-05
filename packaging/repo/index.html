@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>HZD950 CUPS driver — package repository</title>
+<title>TSPL label-printer CUPS driver — package repository</title>
 <style>
   :root { color-scheme: dark; }
   body { margin:0; background:#0b0b0c; color:#e9e9ea;
@@ -25,30 +25,30 @@
 </head>
 <body>
 <div class="wrap">
-  <h1>HZD950 CUPS driver</h1>
+  <h1>TSPL label-printer CUPS driver</h1>
   <p class="sub">A signed apt &amp; dnf package repository. Add it once, then install and
   auto-upgrade the driver by name. Free &amp; open source by
-  <a href="https://github.com/RunTheWall/hzd950-cups-driver">Run The Wall</a>.</p>
+  <a href="https://github.com/RunTheWall/tspl-cups-driver">Run The Wall</a>.</p>
 
   <div class="card">
     <h2 style="margin-top:0">Debian / Ubuntu / Raspberry Pi OS</h2>
-<pre><code>curl -fsSL https://runthewall.github.io/hzd950-cups-driver/apt/KEY.gpg \
-  | sudo tee /usr/share/keyrings/hzd950.gpg &gt;/dev/null
-echo "deb [signed-by=/usr/share/keyrings/hzd950.gpg] https://runthewall.github.io/hzd950-cups-driver/apt ./" \
-  | sudo tee /etc/apt/sources.list.d/hzd950.list
-sudo apt update &amp;&amp; sudo apt install hzd950-cups-driver</code></pre>
+<pre><code>curl -fsSL https://runthewall.github.io/tspl-cups-driver/apt/KEY.gpg \
+  | sudo tee /usr/share/keyrings/tspl.gpg &gt;/dev/null
+echo "deb [signed-by=/usr/share/keyrings/tspl.gpg] https://runthewall.github.io/tspl-cups-driver/apt ./" \
+  | sudo tee /etc/apt/sources.list.d/tspl.list
+sudo apt update &amp;&amp; sudo apt install tspl-cups-driver</code></pre>
   </div>
 
   <div class="card">
     <h2 style="margin-top:0">Fedora / RHEL / openSUSE</h2>
-<pre><code>sudo curl -fsSL https://runthewall.github.io/hzd950-cups-driver/rpm/hzd950.repo \
-  -o /etc/yum.repos.d/hzd950.repo
-sudo dnf install hzd950-cups-driver</code></pre>
+<pre><code>sudo curl -fsSL https://runthewall.github.io/tspl-cups-driver/rpm/tspl.repo \
+  -o /etc/yum.repos.d/tspl.repo
+sudo dnf install tspl-cups-driver</code></pre>
   </div>
 
   <h2>After installing</h2>
   <p>The package installs the driver files. Create the print queue once:</p>
-<pre><code>sudo lpadmin -p HZD950 -E -v hzd950:auto -P /usr/share/ppd/hzd950/HZD950-PRO.ppd \
+<pre><code>sudo lpadmin -p HZD950 -E -v tspl://auto -P /usr/share/ppd/tspl/tspl-label.ppd \
      -o printer-is-shared=true -o media=na_index-4x6_4x6in</code></pre>
 
   <h2>Signing key</h2>
@@ -62,7 +62,7 @@ sudo dnf install hzd950-cups-driver</code></pre>
 
   <footer>
     Prefer no repo? Grab a <code>.deb</code>/<code>.rpm</code> or a prebuilt binary from the
-    <a href="https://github.com/RunTheWall/hzd950-cups-driver/releases">releases page</a>.
+    <a href="https://github.com/RunTheWall/tspl-cups-driver/releases">releases page</a>.
   </footer>
 </div>
 </body>

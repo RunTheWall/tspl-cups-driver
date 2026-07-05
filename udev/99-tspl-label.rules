@@ -1,0 +1,7 @@
+# Stable /dev symlink for a TSPL label printer (USB 0fe6:811e)
+# so its device path survives reboot USB re-enumeration when you have more than
+# one USB printer. Part of the free RTW driver — https://constly.com
+#
+# Install:  sudo cp 99-tspl-label.rules /etc/udev/rules.d/
+#           sudo udevadm control --reload-rules && sudo udevadm trigger
+SUBSYSTEM=="usbmisc", KERNEL=="lp[0-9]*", ATTRS{idVendor}=="0fe6", ATTRS{idProduct}=="811e", SYMLINK+="usb/tspl-label"

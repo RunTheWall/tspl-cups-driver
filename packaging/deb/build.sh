@@ -8,19 +8,19 @@ OUT="${3:-dist}"
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 cd "$ROOT"
 
-[ -f src/rastertohzd ] || make -s
+[ -f src/rastertotspl ] || make -s
 
 STAGE="$(mktemp -d)"
 trap 'rm -rf "$STAGE"' EXIT
-install -Dm0755 src/rastertohzd    "$STAGE/usr/lib/cups/filter/rastertohzd"
-install -Dm0700 backend/hzd950     "$STAGE/usr/lib/cups/backend/hzd950"
-install -Dm0644 ppd/HZD950-PRO.ppd "$STAGE/usr/share/ppd/hzd950/HZD950-PRO.ppd"
-install -Dm0644 README.md          "$STAGE/usr/share/doc/hzd950-cups-driver/README.md"
-install -Dm0644 LICENSE            "$STAGE/usr/share/doc/hzd950-cups-driver/copyright"
+install -Dm0755 src/rastertotspl    "$STAGE/usr/lib/cups/filter/rastertotspl"
+install -Dm0700 backend/tspl     "$STAGE/usr/lib/cups/backend/tspl"
+install -Dm0644 ppd/tspl-label.ppd "$STAGE/usr/share/ppd/tspl/tspl-label.ppd"
+install -Dm0644 README.md          "$STAGE/usr/share/doc/tspl-cups-driver/README.md"
+install -Dm0644 LICENSE            "$STAGE/usr/share/doc/tspl-cups-driver/copyright"
 
 mkdir -p "$STAGE/DEBIAN"
 sed -e "s/@VER@/$VER/g" -e "s/@ARCH@/$ARCH/g" packaging/deb/control.in > "$STAGE/DEBIAN/control"
 install -m0755 packaging/deb/postinst "$STAGE/DEBIAN/postinst"
 
 mkdir -p "$OUT"
-dpkg-deb --build --root-owner-group "$STAGE" "$OUT/hzd950-cups-driver_${VER}_${ARCH}.deb"
+dpkg-deb --build --root-owner-group "$STAGE" "$OUT/tspl-cups-driver_${VER}_${ARCH}.deb"

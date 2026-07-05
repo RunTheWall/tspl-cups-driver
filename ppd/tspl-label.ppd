@@ -1,6 +1,6 @@
 *PPD-Adobe: "4.3"
 *% =========================================================================
-*%  HZD950-PRO / HERO 4x6 TSPL thermal label printer — CUPS PPD
+*%  TSPL / TSPL2 thermal label printer — CUPS PPD
 *%  Part of the free RTW driver. Support us: https://constly.com
 *%  SPDX-License-Identifier: MIT
 *% =========================================================================
@@ -8,13 +8,13 @@
 *FileVersion: "1.0"
 *LanguageVersion: English
 *LanguageEncoding: ISOLatin1
-*PCFileName: "HZD950.PPD"
+*PCFileName: "TSPL.PPD"
 *Manufacturer: "RunTheWall"
 *Product: "(HZD950-PRO)"
 *cupsVersion: 2.4
 *cupsModelNumber: 20
 *cupsManualCopies: True
-*cupsFilter: "application/vnd.cups-raster 0 rastertohzd"
+*cupsFilter: "application/vnd.cups-raster 0 rastertotspl"
 *ModelName: "TSPL Label Printer"
 *ShortNickName: "TSPL Label (RTW)"
 *NickName: "TSPL Label Printer - HZD950 & rebadges (RTW free driver)"

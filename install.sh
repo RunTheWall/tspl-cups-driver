@@ -1,6 +1,6 @@
 #!/bin/sh
 # ============================================================================
-#  Installer for the free RTW HZD950-PRO CUPS label-printer driver.
+#  Installer for the free RTW TSPL label-printer CUPS driver.
 #  Builds the filter, installs filter + backend + PPD, creates a shared queue,
 #  makes it one-click AirPrint-discoverable, and (optionally) prints a welcome
 #  label straight from the Pi.
@@ -13,7 +13,7 @@ cd "$(dirname "$0")"
 HERE="$(pwd)"
 
 QUEUE="${1:-HZD950}"
-PPDDIR="/usr/share/ppd/hzd950"
+PPDDIR="/usr/share/ppd/tspl"
 
 # CUPS server binary dir varies by distro: /usr/lib/cups (Debian/Arch),
 # /usr/libexec/cups (Fedora/RHEL), /usr/lib64/cups (some). Trust cups-config,
@@ -29,7 +29,7 @@ fi
 
 if [ "$(id -u)" != "0" ]; then echo "Please run with sudo: sudo ./install.sh"; exit 1; fi
 
-REPO_URL="https://github.com/RunTheWall/hzd950-cups-driver"
+REPO_URL="https://github.com/RunTheWall/tspl-cups-driver"
 
 dep_hint() {
     echo "   install a C compiler, make, and the CUPS dev headers:"
@@ -57,15 +57,15 @@ BIN=""
 have_cc=0;  { command -v gcc >/dev/null 2>&1 || command -v cc >/dev/null 2>&1; } && have_cc=1
 have_hdr=0; { [ -f /usr/include/cups/raster.h ] || cups-config --cflags >/dev/null 2>&1; } && have_hdr=1
 if [ "$have_cc" = 1 ] && [ "$have_hdr" = 1 ]; then
-    echo ">> building rastertohzd from source..."
-    make -s && [ -f src/rastertohzd ] && BIN=src/rastertohzd
+    echo ">> building rastertotspl from source..."
+    make -s && [ -f src/rastertotspl ] && BIN=src/rastertotspl
 fi
 if [ -z "$BIN" ]; then
     A="$(deb_arch)"
     if [ -n "$A" ] && command -v curl >/dev/null 2>&1; then
-        echo ">> no compiler/headers here — fetching prebuilt rastertohzd-$A ..."
-        tmp="/tmp/rastertohzd.$$"
-        if curl -fsSL "$REPO_URL/releases/latest/download/rastertohzd-$A" -o "$tmp" && [ -s "$tmp" ]; then
+        echo ">> no compiler/headers here — fetching prebuilt rastertotspl-$A ..."
+        tmp="/tmp/rastertotspl.$$"
+        if curl -fsSL "$REPO_URL/releases/latest/download/rastertotspl-$A" -o "$tmp" && [ -s "$tmp" ]; then
             chmod +x "$tmp"
             "$tmp" >/dev/null 2>&1; rc=$?          # 126/127 == can't exec (wrong libc/arch)
             if [ "$rc" != 126 ] && [ "$rc" != 127 ]; then BIN="$tmp"
@@ -80,18 +80,18 @@ if [ -z "$BIN" ]; then
 fi
 
 echo ">> installing filter + backend + PPD..."
-install -o root -g root -m 0755 "$BIN" "$SERVERBIN/filter/rastertohzd"
-install -o root -g root -m 0700 backend/hzd950   "$SERVERBIN/backend/hzd950"
-install -o root -g root -m 0644 -D ppd/HZD950-PRO.ppd "$PPDDIR/HZD950-PRO.ppd"
+install -o root -g root -m 0755 "$BIN" "$SERVERBIN/filter/rastertotspl"
+install -o root -g root -m 0700 backend/tspl   "$SERVERBIN/backend/tspl"
+install -o root -g root -m 0644 -D ppd/tspl-label.ppd "$PPDDIR/tspl-label.ppd"
 
 if [ -z "$(ls /dev/usb/lp* 2>/dev/null)" ]; then
     echo "!! No usblp device found. Plug the printer in (and power it on), then re-run."
 fi
 
 echo ">> creating shared CUPS queue '$QUEUE'..."
-lpadmin -p "$QUEUE" -E -v "hzd950:auto" -P "$PPDDIR/HZD950-PRO.ppd" \
+lpadmin -p "$QUEUE" -E -v "tspl://auto" -P "$PPDDIR/tspl-label.ppd" \
         -o printer-is-shared=true -o media=na_index-4x6_4x6in \
-        -D "HZD950-PRO label (RTW free driver)"
+        -D "TSPL label printer (RTW free driver)"
 cupsenable "$QUEUE" 2>/dev/null || true
 cupsaccept "$QUEUE" 2>/dev/null || true
 

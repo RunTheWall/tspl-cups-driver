@@ -8,12 +8,12 @@ CFLAGS   += $(CUPSCFG)
 # cups-config --libs gives -lcups; the raster API lives in -lcupsimage on CUPS 2.x.
 LIBS     := $(if $(CUPSLIBS),$(CUPSLIBS),-lcups) -lcupsimage -lm
 
-all: src/rastertohzd
+all: src/rastertotspl
 
-src/rastertohzd: src/rastertohzd.c
+src/rastertotspl: src/rastertotspl.c
 	$(CC) $(CFLAGS) -o $@ $< $(LIBS)
 
 clean:
-	rm -f src/rastertohzd
+	rm -f src/rastertotspl
 
 .PHONY: all clean
