@@ -28,6 +28,8 @@
  *
  *  Input raster: cupsColorSpace 0 (W = luminance, 255=white, 0=black), 8bpp, 300dpi.
  *  CUPS filter argv: job-id user title copies options [filename]
+ *  (argv[4] copies is ignored by design — device copies come from the raster
+ *   header's NumCopies; see the comment at the copies computation below.)
  *
  *  SPDX-License-Identifier: MIT
  */
@@ -103,14 +105,20 @@ int main(int argc, char *argv[])
     int printmode = opt_int(ppd, num_options, options, "PrintMode",  PM_DEFAULT);
     int href      = opt_int(ppd, num_options, options, "Horizontal", 0);
     int vref      = opt_int(ppd, num_options, options, "Vertical",   0);
-    int copies    = atoi(argv[4]);
     if (ppd) ppdClose(ppd);
 
-    if (copies < 1) copies = 1;
+    /* Copies deliberately do NOT come from argv[4]: upstream (pdftopdf) owns
+     * copy generation and tells us the per-page device-copy count in the
+     * raster header (NumCopies) — the PPD says cupsManualCopies False. Using
+     * argv[4] here would multiply again: N copies -> N^2 labels. */
+
     if (darkness < 0) darkness = 0;
     if (darkness > 15) darkness = 15;
-    int speed_ips = speedval / 10;            /* 50 -> 5 in/sec */
-    if (speed_ips < 1) speed_ips = 4;
+    /* PPD values are ips x10 (50 -> 5 in/sec); accept bare ips (1..9) too so a
+     * hand-typed  -o PrintSpeed=3  does the intuitive thing. */
+    int speed_ips = (speedval >= 10) ? speedval / 10 : speedval;
+    if (speed_ips < 1)  speed_ips = 1;
+    if (speed_ips > 15) speed_ips = 15;       /* nothing consumer prints faster */
 
     /* ---- input raster ---- */
     int fd = 0;
@@ -129,6 +137,14 @@ int main(int argc, char *argv[])
         unsigned W = h.cupsWidth, H = h.cupsHeight;
         unsigned bpl = h.cupsBytesPerLine;
         if (W == 0 || H == 0) continue;
+        /* We only understand the raster our PPD asks for: 8-bit, 1 channel
+         * (grey). Anything else would be misread as garbage — refuse loudly. */
+        if (h.cupsBitsPerPixel != 8 || bpl < W) {
+            fprintf(stderr, "ERROR: unexpected raster format (%ubpp, %u bytes/line for "
+                    "%u px) — expected 8bpp grey; is the queue using our PPD?\n",
+                    h.cupsBitsPerPixel, bpl, W);
+            return 1;
+        }
         unsigned resx = h.HWResolution[0] ? h.HWResolution[0] : 300;
         unsigned resy = h.HWResolution[1] ? h.HWResolution[1] : 300;
 
@@ -137,7 +153,10 @@ int main(int argc, char *argv[])
         unsigned char *line = malloc(bpl);
         if (!ink || !line) { fputs("ERROR: out of memory\n", stderr); return 1; }
         for (unsigned y = 0; y < H; y++) {
-            cupsRasterReadPixels(ras, line, bpl);
+            if (cupsRasterReadPixels(ras, line, bpl) < 1) {
+                fprintf(stderr, "ERROR: raster truncated at line %u of %u\n", y, H);
+                return 1;
+            }
             for (unsigned x = 0; x < W; x++)
                 ink[(size_t)y * W + x] = 255 - line[x];   /* W -> ink */
         }
@@ -146,6 +165,7 @@ int main(int argc, char *argv[])
         /* ---- halftone to 1bpp packed rows ---- */
         unsigned wbytes = (W + 7) / 8;
         unsigned char *bm = malloc((size_t)wbytes * H);
+        if (!bm) { fputs("ERROR: out of memory\n", stderr); return 1; }
         memset(bm, BLACK_BIT ? 0x00 : 0xFF, (size_t)wbytes * H);  /* start all-white */
 
         for (unsigned y = 0; y < H; y++) {
@@ -188,12 +208,13 @@ int main(int argc, char *argv[])
                  wmm, hmm, darkness, speed_ips, href, vref, wbytes, H);
         fputs(hdr, stdout);
         fwrite(bm, 1, (size_t)wbytes * H, stdout);
-        printf("\r\nPRINT 1,%d\r\n", copies);
+        unsigned copies = h.NumCopies ? h.NumCopies : 1;
+        printf("\r\nPRINT 1,%u\r\n", copies);
         fflush(stdout);
         free(bm);
 
-        fprintf(stderr, "INFO: TSPL page %d: %ux%u dots (%dx%dmm) mode=%d density=%d speed=%d\n",
-                page, W, H, wmm, hmm, printmode, darkness, speed_ips);
+        fprintf(stderr, "INFO: TSPL page %d: %ux%u dots (%dx%dmm) mode=%d density=%d speed=%d copies=%u\n",
+                page, W, H, wmm, hmm, printmode, darkness, speed_ips, copies);
     }
 
     cupsRasterClose(ras);

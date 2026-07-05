@@ -13,7 +13,9 @@
 *Product: "(HZD950-PRO)"
 *cupsVersion: 2.4
 *cupsModelNumber: 20
-*cupsManualCopies: True
+*% False = the device does copies itself: the filter turns the raster
+*% header's NumCopies into  PRINT 1,<n>  (bitmap sent once, printed n times).
+*cupsManualCopies: False
 *cupsFilter: "application/vnd.cups-raster 0 rastertotspl"
 *ModelName: "TSPL Label Printer"
 *ShortNickName: "TSPL Label (RTW)"
@@ -114,7 +116,7 @@
 *OpenUI *PrintMode/Print Mode: PickOne
 *OrderDependency: 60 AnySetup *PrintMode
 *DefaultPrintMode: 5
-*PrintMode 5/Default — sharp (text & barcodes): ""
+*PrintMode 5/Default - sharp (text & barcodes): ""
 *PrintMode 0/None (threshold): ""
 *PrintMode 2/Diffusion: ""
 *PrintMode 3/Gathering (clustered dots): ""
