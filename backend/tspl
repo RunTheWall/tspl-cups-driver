@@ -10,7 +10,9 @@
 #  detaches usblp and causes a first-job-after-boot race.
 #
 #  Confirm your printer really speaks TSPL (prints nothing):
-#     cat /sys/class/usbmisc/lp0/device/ieee1284_id     # look for CMD:TSPL
+#     cat /sys/class/usbmisc/lp0/device/ieee1284_id
+#  and look for TSPL in the CMD: / COMMAND SET: field (the HZD950-PRO reports
+#  "COMMAND SET:TSPL").
 #  (~!T also returns a model string per spec, but many clones are write-only
 #  over USB — don't trust a silent read.)
 #

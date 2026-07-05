@@ -110,40 +110,49 @@ int main(int argc, char *argv[])
     int href      = opt_int(ppd, num_options, options, "Horizontal", 0);
     int vref      = opt_int(ppd, num_options, options, "Vertical",   0);
 
-    /* MediaTracking: how the printer finds label boundaries. Copy the choice
-     * out before ppdClose frees it (PPD choice keywords are up to 40 chars). */
-    char media[41] = "Gap";
+    /* MediaTracking -> the boundary command. GAP/BLINE select the sensor;
+     * sending GAP to continuous or black-mark stock makes the firmware hunt
+     * for a gap that never comes (feeds a label + margin, then errors), so an
+     * unrecognized value must not silently fall through without a warning.
+     * Resolved to a static string here because ppdClose frees the choice. */
+    const char *track = "GAP 3 mm,0 mm\r\n";              /* Gap (die-cut) */
     {
         const char *v = cupsGetOption("MediaTracking", num_options, options);
         ppd_choice_t *c;
         if (!v && ppd && (c = ppdFindMarkedChoice(ppd, "MediaTracking")) != NULL)
             v = c->choice;
-        if (v && *v) snprintf(media, sizeof media, "%s", v);
+        if (v && *v) {
+            if      (!strcasecmp(v, "BlackMark"))      track = "BLINE 3 mm,0 mm\r\n";
+            else if (!strcasecmp(v, "Continuous"))     track = "GAP 0 mm,0 mm\r\n";
+            else if (!strcasecmp(v, "PrinterDefault")) track = ""; /* stored setting */
+            else if (strcasecmp(v, "Gap"))
+                fprintf(stderr, "WARNING: unknown MediaTracking '%s' — assuming "
+                        "Gap (die-cut); use Gap, BlackMark, Continuous or "
+                        "PrinterDefault\n", v);
+        }
     }
     if (ppd) ppdClose(ppd);
 
     /* Copies deliberately do NOT come from argv[4]: upstream (pdftopdf) owns
      * copy generation and tells us the per-page device-copy count in the
      * raster header (NumCopies) — the PPD says cupsManualCopies False. Using
-     * argv[4] here would multiply again: N copies -> N^2 labels. */
+     * argv[4] here would multiply again: N copies -> N^2 labels.
+     * Known edge, accepted on purpose: a job entering the chain ALREADY as
+     * CUPS raster (cupsfilter-prerendered, custom mime.convs) carries
+     * NumCopies=1, so -n N prints 1 label. Same semantics as CUPS's own
+     * rastertolabel; every mainstream path (PDF, image, AirPrint URF, PWG
+     * raster) sets NumCopies correctly. */
 
     if (darkness < 0) darkness = 0;
     if (darkness > 15) darkness = 15;
     /* PPD values are ips x10 (50 -> 5 in/sec); accept bare ips (1..9) too so a
      * hand-typed  -o PrintSpeed=3  does the intuitive thing. 0 (or negative)
      * means "don't send SPEED at all" — the printer's own setting wins, the
-     * safest choice on models whose max differs (e.g. HPRT N41 caps at 4). */
+     * safest choice on models whose max differs (e.g. HPRT N41 caps at 4).
+     * Clamp to 6: the PPD tops out there, no studied model goes faster, and
+     * out-of-range SPEED behavior is undocumented on the clones. */
     int speed_ips = (speedval >= 10) ? speedval / 10 : speedval;
-    if (speed_ips > 15) speed_ips = 15;       /* nothing consumer prints faster */
-
-    /* Media-boundary command per the tracking mode. GAP/BLINE select the
-     * sensor; sending GAP to continuous or black-mark stock makes the firmware
-     * hunt for a gap that never comes (feeds a label + margin, then errors). */
-    const char *track;
-    if      (!strcasecmp(media, "BlackMark"))      track = "BLINE 3 mm,0 mm\r\n";
-    else if (!strcasecmp(media, "Continuous"))     track = "GAP 0 mm,0 mm\r\n";
-    else if (!strcasecmp(media, "PrinterDefault")) track = "";  /* stored setting */
-    else                                           track = "GAP 3 mm,0 mm\r\n";
+    if (speed_ips > 6) speed_ips = 6;
 
     /* ---- input raster ---- */
     int fd = 0;
@@ -162,12 +171,15 @@ int main(int argc, char *argv[])
         unsigned W = h.cupsWidth, H = h.cupsHeight;
         unsigned bpl = h.cupsBytesPerLine;
         if (W == 0 || H == 0) continue;
-        /* We only understand the raster our PPD asks for: 8-bit, 1 channel
-         * (grey). Anything else would be misread as garbage — refuse loudly. */
-        if (h.cupsBitsPerPixel != 8 || bpl < W) {
-            fprintf(stderr, "ERROR: unexpected raster format (%ubpp, %u bytes/line for "
-                    "%u px) — expected 8bpp grey; is the queue using our PPD?\n",
-                    h.cupsBitsPerPixel, bpl, W);
+        /* We only understand the raster our PPD asks for: 8-bit, 1 channel,
+         * W colorspace (255=white). Anything else would be misread — e.g. a
+         * K-space page (0=no ink) passes the size checks but would print
+         * photo-negative, near-solid black on thermal stock. Refuse loudly. */
+        if (h.cupsBitsPerPixel != 8 || h.cupsColorSpace != CUPS_CSPACE_W || bpl < W) {
+            fprintf(stderr, "ERROR: unexpected raster format (%ubpp, colorspace %u, "
+                    "%u bytes/line for %u px) — expected 8bpp grey (W); is the "
+                    "queue using our PPD?\n",
+                    h.cupsBitsPerPixel, h.cupsColorSpace, bpl, W);
             return 1;
         }
         unsigned resx = h.HWResolution[0] ? h.HWResolution[0] : 300;
@@ -179,8 +191,11 @@ int main(int argc, char *argv[])
          * silently on the clones — better to crop deterministically here. */
         unsigned maxw = (resx >= 300) ? 1248 : 812;
         if (W > maxw) {
-            fprintf(stderr, "INFO: page wider than the print head (%u > %u dots) — "
-                    "clipping the right edge\n", W, maxw);
+            /* WARNING (not INFO) so CUPS surfaces it in the job log: queues
+             * created under the old PPD still allow 4.5in custom widths, and
+             * a silent clip would eat the right edge of a barcode. */
+            fprintf(stderr, "WARNING: page wider than the print head (%u > %u dots)"
+                    " — clipping the right edge\n", W, maxw);
             W = maxw;
         }
 

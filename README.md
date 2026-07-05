@@ -165,7 +165,9 @@ Loaded **black-mark or continuous stock** instead of die-cut labels? Set it per 
 `-o MediaTracking=BlackMark` or `Continuous` — sending the default gap-sensor command to gapless
 media makes the printer hunt for a gap and error out. And after any media change, run the printer's
 **hold-the-feed-button calibration** and make sure the queue's page size matches the physical labels:
-TSPL firmwares skip or garble labels when `SIZE` disagrees with the stock.
+TSPL firmwares skip or garble labels when `SIZE` disagrees with the stock. Note `PrinterDefault`
+sends no boundary command at all — and GAP/BLINE **persist in printer memory**, so such a queue
+inherits whatever the last job set (e.g. `GAP 0` from a Continuous queue sharing the printer).
 
 <details>
 <summary><b>Two queues: crisp labels + a "photo" (Gathering) queue</b></summary>
@@ -208,7 +210,8 @@ or the dnf/pacman/zypper equivalent), then `make`.
 
 **Multiple USB printers?** `tspl://auto` only matches known TSPL ids (never a laser); pin others by
 `vid:pid`/node. Drop in [`udev/99-tspl-label.rules`](udev/99-tspl-label.rules) for a stable
-`/dev/usb/tspl-label` symlink.
+`/dev/usb/tspl-label` symlink — and with **two label printers**, pin each queue to its per-unit
+`/dev/usb/tspl-label-<serial>` link (the bare symlink points at whichever enumerated last).
 
 **Notes:** CUPS 2.4 prints a "printer drivers are deprecated" warning — harmless; classic PPD+filter
 drivers work for years yet. Reverse-engineered cleanly from the printer's own TSPL output; no vendor code
@@ -221,8 +224,8 @@ It's free, but we do want it to actually work for you — and **your report is h
 [Supported printers](#supported-printers) list grows.** No hoops, just GitHub Issues:
 
 - **Your printer works — or doesn't?** → [**Open a printer report**](https://github.com/RunTheWall/tspl-cups-driver/issues/new?template=printer-report.yml).
-  It asks for your model, `lsusb` USB id, the `~!T` reply, and your distro/arch. Confirmed printers move
-  to ✅ and get added to auto-detect.
+  It asks for your model, `lsusb` USB id, the IEEE-1284 id (or `~!T` reply), and your distro/arch.
+  Confirmed printers move to ✅ and get added to auto-detect.
 - **Hit a bug?** → [**Open a bug report**](https://github.com/RunTheWall/tspl-cups-driver/issues/new?template=bug.yml)
   with your CUPS error log (`/var/log/cups/error_log` — please redact hostnames/IPs).
 - **Just a question?** → [open an issue](https://github.com/RunTheWall/tspl-cups-driver/issues/new) anyway; we read them all.

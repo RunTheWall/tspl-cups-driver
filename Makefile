@@ -13,7 +13,13 @@ all: src/rastertotspl
 src/rastertotspl: src/rastertotspl.c
 	$(CC) $(CFLAGS) -o $@ $< $(LIBS)
 
+tests/mkras: tests/mkras.c
+	$(CC) $(CFLAGS) -o $@ $< $(LIBS)
+
+test: src/rastertotspl tests/mkras
+	sh tests/smoke.sh
+
 clean:
 	rm -f src/rastertotspl tests/mkras
 
-.PHONY: all clean
+.PHONY: all clean test

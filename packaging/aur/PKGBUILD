@@ -1,4 +1,10 @@
 # Maintainer: Run The Wall <hello@constly.com>
+#
+# RELEASE CHECKLIST — every version bump must update, in lockstep:
+#   1. pkgver
+#   2. sha256sums:  curl -fsSL <url>/archive/refs/tags/v<ver>.tar.gz | sha256sum
+#   3. .SRCINFO:    makepkg --printsrcinfo > .SRCINFO
+# Skipping 2/3 hard-breaks AUR installs (checksum mismatch / stale metadata).
 pkgname=tspl-cups-driver
 pkgver=1.2.0
 pkgrel=1
