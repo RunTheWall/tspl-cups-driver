@@ -1,6 +1,6 @@
 # Maintainer: Run The Wall <hello@constly.com>
 pkgname=hzd950-cups-driver
-pkgver=1.0.3
+pkgver=1.1.0
 pkgrel=1
 pkgdesc="Free CUPS driver for HZD950-PRO / HERO TSPL thermal label printers (by Run The Wall - https://constly.com)"
 arch=('x86_64' 'aarch64' 'armv7h')
