@@ -29,11 +29,16 @@
 # ============================================================================
 
 # Known TSPL-label USB ids, used only to disambiguate when several USB printers
-# are attached. NB: 0fe6:811e is a generic GD32 USB bridge also used by ESC/POS
-# receipt printers, so it only wins auto-match as a sole/known device.
+# are attached. NB: 0fe6:811e is a squatted "ICS Advent Parallel Adapter" id —
+# a generic USB-parallel printer bridge also seen on unrelated ESC/POS receipt
+# printers (Gainscha GP80, Geyi Q583P) — so auto-match can still pick a
+# non-TSPL device on that id; pin by serial/node if you have both kinds.
 #   09c6:0426  Beeprt/JADENS/Munbyn-ITPP941/Rollo OEM engine
-#   20d1:7008  iDPRT SP410/SP420 (HPRT/Polono siblings likely)
-#   0fe6:811e  HZD950-PRO (reference) and shared GD32 bridge
+#              (linux-hardware.org reports it as "Beeprt LabelPrinter")
+#   20d1:7008  iDPRT SP410/SP420 (HPRT = same Hanin parent; Polono unconfirmed)
+#   0fe6:811e  HZD950-PRO / HERO (reference unit) on the shared bridge id
+#   2d84:*     Zhuhai Poskey / Xprinter label printers
+#              (b806 = Poskey DT-108B per usb.ids; b528 seen on XP-460B)
 KNOWN_IDS="09c6:0426 20d1:7008 0fe6:811e 2d84:*"
 
 usb_attr() {   # $1 = usblp minor, $2 = sysfs attr
