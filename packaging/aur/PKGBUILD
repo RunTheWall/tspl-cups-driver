@@ -12,7 +12,7 @@ conflicts=('hzd950-cups-driver')
 replaces=('hzd950-cups-driver')
 provides=('hzd950-cups-driver')
 source=("$pkgname-$pkgver.tar.gz::$url/archive/refs/tags/v$pkgver.tar.gz")
-sha256sums=('SKIP')
+sha256sums=('625021a762431c1ef7bcc6b85303e3a95e6238e12641483737b04e3b9cb4978f')
 
 build() {
   cd "$pkgname-$pkgver"
