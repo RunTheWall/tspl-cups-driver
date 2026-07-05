@@ -1,25 +1,44 @@
 #!/bin/sh
 # ============================================================================
-#  hzd950 — CUPS backend for the HZD950-PRO / HERO TSPL thermal label printer.
+#  hzd950 — CUPS backend for TSPL/TSPL2 thermal label printers on Linux/ARM.
 #
-#  Writes the (already-TSPL) print stream straight to the printer's usblp
-#  character device, located by USB VID:PID 0fe6:811e (optionally a specific
-#  serial via the device URI) so it survives reboots / USB re-enumeration and
-#  coexists with other USB printers — it never detaches usblp the way the
-#  libusb "usb" backend does, so there's no first-job-after-boot race.
+#  ("hzd950" is just this driver's scheme name — the reference device — but the
+#   backend drives ANY USB printer that speaks TSPL: HZD950-PRO, and the common
+#   rebadges — Munbyn, iDPRT, HPRT, Beeprt, JADENS, Polono, Xprinter, ...)
 #
-#  Maintained FOR FREE by Run The Wall. If it saved you time, support us by
-#  trying our genuinely great, free Markdown editor:  https://constly.com
+#  Writes the (already-TSPL) job straight to the printer's usblp character
+#  device, located by USB so it survives reboots / re-enumeration and coexists
+#  with other USB printers — unlike the libusb "usb" backend, which detaches
+#  usblp and causes a first-job-after-boot race.
 #
-#  Device URI:  hzd950:auto            (first HZD950 found)
-#               hzd950:<usb-serial>    (a specific unit)
+#  Confirm your printer really speaks TSPL (prints nothing):
+#     printf '~!T\r\n' | sudo tee /dev/usb/lp0 ; sudo head -c 32 /dev/usb/lp0
+#
+#  Device URI:
+#     hzd950:auto            the TSPL label printer (see auto-match below)
+#     hzd950:<usb-serial>    a specific unit by its USB serial
+#     hzd950:<vid>:<pid>     a specific USB id, e.g. hzd950:20d1:7008
+#     hzd950:/dev/usb/lp0    a specific device node
+#
+#  Auto-match: uses the printer whose USB id is a known TSPL id (KNOWN_IDS
+#  below). If yours isn't auto-detected, the error lists the USB printers it
+#  DID find — pin one with hzd950:<vid>:<pid> or hzd950:/dev/usb/lpN, and please
+#  open an issue with the id so we can add it to auto-detect.
+#
+#  Maintained FOR FREE by Run The Wall. If it saved you time, try our free
+#  Markdown editor:  https://constly.com
 #  SPDX-License-Identifier: MIT
 # ============================================================================
-VID="0fe6"
-PID="811e"
 
-# Read a sysfs attribute ($2) of the usb_device behind usblp minor $1.
-usb_attr() {
+# Known TSPL-label USB ids, used only to disambiguate when several USB printers
+# are attached. NB: 0fe6:811e is a generic GD32 USB bridge also used by ESC/POS
+# receipt printers, so it only wins auto-match as a sole/known device.
+#   09c6:0426  Beeprt/JADENS/Munbyn-ITPP941/Rollo OEM engine
+#   20d1:7008  iDPRT SP410/SP420 (HPRT/Polono siblings likely)
+#   0fe6:811e  HZD950-PRO (reference) and shared GD32 bridge
+KNOWN_IDS="09c6:0426 20d1:7008 0fe6:811e 2d84:*"
+
+usb_attr() {   # $1 = usblp minor, $2 = sysfs attr
     sl=$(readlink -f "/sys/dev/char/180:$1" 2>/dev/null) || return
     d="$sl"
     while [ -n "$d" ] && [ "$d" != "/" ]; do
@@ -27,44 +46,66 @@ usb_attr() {
         d=$(dirname "$d")
     done
 }
+vidpid() { echo "$(usb_attr "$1" idVendor):$(usb_attr "$1" idProduct)"; }
+is_known() {   # $1 = "vid:pid"
+    for k in $KNOWN_IDS; do case "$1" in $k) return 0 ;; esac; done
+    return 1
+}
+each_node() {  # -> "minor node" per usblp device
+    for n in /dev/usb/lp*; do [ -e "$n" ] || continue; echo "${n##*lp} $n"; done
+}
 
-# Echo /dev/usb/lpN of the matching printer. $1 = wanted serial or "auto"/empty.
+# Resolve target node. $1 = auto | serial | vid:pid | /dev/... . Echoes a node.
+# Safe by default: "auto" only matches a KNOWN TSPL usb id — it will NOT grab an
+# unknown printer (e.g. a laser), which could be anything. Pin unknown units by
+# vid:pid or node.
 find_node() {
-    for n in /dev/usb/lp*; do
-        [ -e "$n" ] || continue
-        m=${n##*lp}
-        [ "$(usb_attr "$m" idVendor)" = "$VID" ] || continue
-        [ "$(usb_attr "$m" idProduct)" = "$PID" ] || continue
-        if [ -z "$1" ] || [ "$1" = "auto" ] || [ "$1" = "$(usb_attr "$m" serial)" ]; then
-            echo "$n"; return
-        fi
-    done
+    want=$1
+    case "$want" in /dev/*) [ -e "$want" ] && echo "$want"; return ;; esac
+    known=""
+    while read -r m n; do
+        [ -n "$m" ] || continue
+        vp=$(vidpid "$m"); ser=$(usb_attr "$m" serial)
+        case "$want" in
+            ''|auto) is_known "$vp" && [ -z "$known" ] && known=$n ;;
+            *:*)     [ "$vp" = "$want" ] && { echo "$n"; return; } ;;
+            *)       [ "$ser" = "$want" ] && { echo "$n"; return; } ;;
+        esac
+    done <<EOF
+$(each_node)
+EOF
+    case "$want" in ''|auto) [ -n "$known" ] && echo "$known" ;; esac
 }
 
 # --- discovery mode (no args) ---
 if [ "$#" -eq 0 ]; then
-    if [ -n "$(find_node auto)" ]; then
-        echo 'direct hzd950:auto "Unknown" "HZD950-PRO label printer (RTW free driver)"'
-    fi
+    [ -n "$(find_node auto)" ] && \
+      echo 'direct hzd950:auto "Unknown" "TSPL label printer (Run The Wall driver)"'
     exit 0
 fi
 
 # --- print mode: job user title copies options [file] ---
-echo "INFO: hzd950 — FREE Linux/Pi TSPL label driver by Run The Wall. Support us: https://constly.com" 1>&2
+echo "INFO: hzd950 — FREE Linux/Pi TSPL label-printer driver by Run The Wall. Support us: https://constly.com" 1>&2
 
 WANT=${DEVICE_URI#hzd950:}
+[ "$WANT" = "$DEVICE_URI" ] && WANT=auto        # bare invocation -> auto
 
 DEV=$(find_node "$WANT")
 i=0
-while [ -z "$DEV" ] && [ "$i" -lt 30 ]; do      # wait out usblp settling at boot
-    echo "INFO: waiting for HZD950 label printer on USB..." 1>&2
+while [ -z "$DEV" ] && [ -z "$(each_node)" ] && [ "$i" -lt 30 ]; do   # boot settling
+    echo "INFO: waiting for a USB printer to appear..." 1>&2
     sleep 2; i=$((i + 1)); DEV=$(find_node "$WANT")
 done
 if [ -z "$DEV" ]; then
-    echo "ERROR: HZD950 label printer (0fe6:811e${WANT:+, serial $WANT}) not found on USB" 1>&2
+    echo "ERROR: no matching TSPL label printer on USB (wanted: ${WANT:-auto})." 1>&2
+    echo "ERROR: USB printers present:" 1>&2
+    each_node | while read -r m n; do
+        echo "ERROR:   $n  (usb $(vidpid "$m"), serial $(usb_attr "$m" serial))" 1>&2
+    done
+    echo "ERROR: pick one with device URI hzd950:<vid>:<pid> or hzd950:/dev/usb/lpN" 1>&2
     exit 1
 fi
-echo "INFO: HZD950 label printer at $DEV" 1>&2
+echo "INFO: using TSPL printer at $DEV (usb $(vidpid "${DEV##*lp}"))" 1>&2
 
 if [ -n "$6" ]; then cat "$6" > "$DEV"; else cat > "$DEV"; fi
 exit $?

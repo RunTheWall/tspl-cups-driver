@@ -1,13 +1,16 @@
-# HZD950-PRO — free Linux & Raspberry Pi (ARM) CUPS driver
+# TSPL label-printer CUPS driver for Linux & Raspberry Pi (ARM)
 
-A small, clean **CUPS driver for the HZD950-PRO / HERO 4×6 direct-thermal label printer**
-(USB `0fe6:811e`, **TSPL/TSPL2**, 300 dpi) that works on **Linux and Raspberry Pi (arm64/armhf)** —
-the architectures the vendor driver leaves out.
+A small, clean **CUPS driver for cheap 4×6 USB thermal label printers that speak TSPL/TSPL2** —
+the ones whose vendors ship **x86-only** drivers and leave **Linux / Raspberry Pi (arm64/armhf)** out.
+Reference-tested on the **HZD950-PRO / HERO**, and it drives the common rebadges too —
+**Munbyn, iDPRT, HPRT, Beeprt, JADENS, Polono, Xprinter** and friends
+(see [**Supported printers**](#supported-printers)).
 
-The vendor ships only x86/i386 filter binaries, so on a Raspberry Pi you hit *"there's no Linux
-driver for this printer."* There is now. This one is **~150 lines of C + a tiny shell backend**,
-builds natively on ARM, and gives you the printer as a normal shared CUPS queue — with Darkness,
-Print Speed, offsets, and **Print Mode (including Gathering)**.
+Those printers almost all speak the same **TSPL** language, so on a Pi you hit the same wall —
+*"there's no Linux driver for this printer"* — and this fills it: **~150 lines of C + a tiny shell
+backend**, builds natively on ARM, renders to bitmaps (so no per-model font quirks), and gives you the
+printer as a normal shared CUPS queue with Darkness, Print Speed, offsets, resolution (203/300 dpi),
+and **Print Mode (including Gathering)** — plus one-command **AirPrint** sharing to Macs/iPhones.
 
 ---
 
@@ -27,8 +30,9 @@ Print Speed, offsets, and **Print Mode (including Gathering)**.
 
 ## What it supports
 
-- **Printer:** HZD950-PRO, sold as the **HERO Shipping Label Printer** and other rebadges of the same
-  300 dpi USB TSPL 4×6 label engine (`0fe6:811e`).
+- **Printers:** any 4×6 USB label printer that speaks **TSPL/TSPL2** — see the
+  [**Supported printers**](#supported-printers) table (HZD950-PRO tested; Munbyn / iDPRT / HPRT / Beeprt /
+  JADENS / Polono / Xprinter community-compatible). Both **203 and 300 dpi**.
 - **Platforms:** **any Linux with CUPS 2.x + a C toolchain + the `usblp` kernel module** — Debian/Ubuntu/
   Raspberry Pi OS, Fedora/RHEL, Arch, openSUSE, Alpine, … `install.sh` auto-detects your package manager
   and CUPS layout. Because it **builds from source** it's architecture-independent: **arm64, armhf,
@@ -40,6 +44,36 @@ Print Speed, offsets, and **Print Mode (including Gathering)**.
   - **Horizontal / Vertical** offset → TSPL `REFERENCE`
   - **Print Mode** (the halftone) → `Default` (sharp threshold, best for text/barcodes),
     `None`, `Diffusion`, **`Gathering`** (clustered-dot), `Error Diffusion`
+
+## Supported printers
+
+These cheap 4×6 label printers almost all speak **TSPL/TSPL2** and mostly lack an ARM/Linux driver, so
+one generic driver covers them. We can only physically **test the HZD950-PRO**; the rest are marked by
+how well-confirmed their TSPL support is. **Check yours in 10 seconds** (prints nothing):
+`printf '~!T\r\n' | sudo tee /dev/usb/lp0 ; sudo head -c 32 /dev/usb/lp0` → it replies with its model.
+
+| Printer | dpi | USB id | Status |
+|---|---|---|---|
+| **HZD950-PRO / HERO** | 300 | `0fe6:811e` | ✅ **Tested** (reference device) |
+| **Munbyn ITPP941 / 941B / 941P** (USB/BT) | 203 · 300 (941P) | `09c6:0426` or generic | 🟢 TSPL-confirmed |
+| **iDPRT SP410 / SP420** | 203 | `20d1:7008` | 🟢 TSPL-confirmed |
+| **HPRT N41 / SL42** | 203 | 20d1 family | 🟢 TSPL-confirmed |
+| **Beeprt BY-426** (the shared OEM engine) | 203 | `09c6:0426` | 🟢 TSPL-confirmed |
+| **JADENS JD-168** | 203 | `09c6:0426` | 🟢 TSPL-confirmed |
+| **Polono PL420** | 203 | HPRT rebadge | 🟢 TSPL-confirmed |
+| **Xprinter XP-420B / 460B / 470B** | 203 · 300 | varies | 🟢 TSPL-confirmed |
+| **Phomemo PM-241 / D520** | 203 | (unverified) | 🟡 Community-reported — confirm with `~!T` |
+
+**Auto-detect vs. pin.** Printers with a known TSPL USB id (`0fe6:811e`, `09c6:0426`, `20d1:7008`)
+are found automatically with `hzd950:auto`. If yours has a different id, the backend prints the id it
+sees — just pin it: `-v hzd950:<vid>:<pid>` or `-v hzd950:/dev/usb/lp0` (and please
+[open an issue](https://github.com/RunTheWall/hzd950-cups-driver/issues) with the id so we add it).
+203 dpi printers: set **Resolution → 203 dpi** on the queue.
+
+**Not this driver** (different language — don't use it for these): **Munbyn AirPrint/"OPL"** models
+(use AirPrint directly), **Phomemo M110/M120/D30/M02** and other mini printers (**ESC/POS**),
+**Brother QL** & **DYMO LabelWriter** (proprietary raster), **Zebra** (ZPL/EPL — well-supported already),
+and **Rollo / OFFNOVA** (TSPL, but they ship their own arm64 drivers).
 
 ## Install
 

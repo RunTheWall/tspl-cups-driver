@@ -15,9 +15,9 @@
 *cupsModelNumber: 20
 *cupsManualCopies: True
 *cupsFilter: "application/vnd.cups-raster 0 rastertohzd"
-*ModelName: "HZD950-PRO TSPL Label"
-*ShortNickName: "HZD950-PRO RTW"
-*NickName: "HZD950-PRO / HERO 4x6 TSPL Label (RTW free driver)"
+*ModelName: "TSPL Label Printer"
+*ShortNickName: "TSPL Label (RTW)"
+*NickName: "TSPL Label Printer - HZD950 & rebadges (RTW free driver)"
 *PSVersion: "(3010.000) 0"
 *LanguageLevel: "3"
 *ColorDevice: False
@@ -31,6 +31,7 @@
 *OpenUI *Resolution/Resolution: PickOne
 *OrderDependency: 30 AnySetup *Resolution
 *DefaultResolution: 300dpi
+*Resolution 203dpi/203 dpi: "<</HWResolution[203 203]/cupsBitsPerColor 8/cupsColorSpace 0/cupsRowCount 0/cupsRowFeed 0/cupsRowStep 0>>setpagedevice"
 *Resolution 300dpi/300 dpi: "<</HWResolution[300 300]/cupsBitsPerColor 8/cupsColorSpace 0/cupsRowCount 0/cupsRowFeed 0/cupsRowStep 0>>setpagedevice"
 *CloseUI: *Resolution
 
