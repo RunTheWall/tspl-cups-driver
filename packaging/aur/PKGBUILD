@@ -18,7 +18,7 @@ conflicts=('hzd950-cups-driver')
 replaces=('hzd950-cups-driver')
 provides=('hzd950-cups-driver')
 source=("$pkgname-$pkgver.tar.gz::$url/archive/refs/tags/v$pkgver.tar.gz")
-sha256sums=('SKIP')  # pinned to the real v1.3.1 tarball hash right after tagging
+sha256sums=('180ad8a945721a9715b690d483e538a539c132697c6c77ad54c2bc6b10c3ce85')
 
 build() {
   cd "$pkgname-$pkgver"
