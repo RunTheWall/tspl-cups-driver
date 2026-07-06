@@ -114,5 +114,14 @@ if [ -z "$DEV" ]; then
 fi
 echo "INFO: using TSPL printer at $DEV (usb $(vidpid "${DEV##*lp}"))" 1>&2
 
-if [ -n "$6" ]; then cat "$6" > "$DEV"; else cat > "$DEV"; fi
+# Spool the whole job, then hand it to the printer in one burst. Do NOT
+# stream at render speed: cheap TSPL firmwares (HZD950-PRO confirmed, by
+# byte-capture A/B test) silently discard pages that arrive while the
+# printer is already printing — a multi-page or multi-copy job trickling
+# in pauses between pages loses everything after label 1. The same bytes
+# written back-to-back print completely.
+TMP=$(mktemp "${TMPDIR:-/tmp}/tspl-job.XXXXXX") || exit 1
+trap 'rm -f "$TMP"' EXIT
+if [ -n "$6" ]; then cat "$6" > "$TMP"; else cat > "$TMP"; fi
+cat "$TMP" > "$DEV"
 exit $?
