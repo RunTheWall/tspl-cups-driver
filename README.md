@@ -203,7 +203,10 @@ your app ─► CUPS ─► gstoraster ─► rastertotspl ─► TSPL ─► ts
   flattened to 1-bit dots with the selected **Print Mode** dither (bitmaps, not printer fonts — so no
   per-model font quirks).
 - **`tspl`** (shell backend) writes the TSPL straight to the printer's `usblp` device, located **by USB
-  id/serial** so it survives reboots and coexists with other USB printers.
+  id/serial** so it survives reboots and coexists with other USB printers. It **spools the whole job,
+  then writes it in one burst**: byte-capture testing on the HZD950-PRO proved these firmwares silently
+  drop data that trickles in while the printer is already printing — drivers that stream at render
+  speed lose **every page after the first** on multi-copy and multi-page jobs.
 
 **Build from source:** needs `gcc`, `make`, CUPS dev headers (`sudo apt install build-essential libcups2-dev`,
 or the dnf/pacman/zypper equivalent), then `make`.
@@ -216,6 +219,12 @@ or the dnf/pacman/zypper equivalent), then `make`.
 **Notes:** CUPS 2.4 prints a "printer drivers are deprecated" warning — harmless; classic PPD+filter
 drivers work for years yet. Reverse-engineered cleanly from the printer's own TSPL output; no vendor code
 is redistributed.
+
+**Coming from another driver where 2 copies printed 1 label, or a multi-page PDF stopped after page
+one?** That's the mid-print data loss described above — cheap TSPL firmwares eat pages that arrive
+while the printer is busy, and most drivers (including vendor ones) stream. This driver spools since
+v1.3.1, so all pages print. If you still see missing pages *here*, that's a bug we want:
+[report it](https://github.com/RunTheWall/tspl-cups-driver/issues/new?template=bug.yml) with your model.
 </details>
 
 ## Something not working? Tell us 🖨️
