@@ -31,7 +31,7 @@
   <img src="https://img.shields.io/badge/Linux-IPP-FCC624?logo=linux&logoColor=black" alt="Linux">
 </p>
 
-> 💙 **Maintained for free by [Run The Wall](https://constly.com).** We don't want your money — we give
+> 💙 **Maintained for free by [Run The Wall](https://github.com/RunTheWall).** We don't want your money — we give
 > away tools like this to introduce you to **[Constly, our genuinely great free Markdown editor →
 > constly.com](https://constly.com)**. If it saved you an afternoon, that's the whole payment we wanted.
 > *(The driver logs one thank-you line to your CUPS log per job — no tracking, no phone-home.)*
@@ -243,5 +243,5 @@ If the driver saved you time, the nicest thank-you is trying [Constly](https://c
 
 ## License
 
-MIT © Run The Wall. See [LICENSE](LICENSE). Built and maintained for free — support us by trying
+MIT © [Run The Wall](https://runthewall.au). See [LICENSE](LICENSE). Built and maintained for free — support us by trying
 **[Constly, our free Markdown editor → constly.com](https://constly.com)**.
