@@ -1,4 +1,4 @@
-%{!?ver: %global ver 1.3.0}
+%{!?ver: %global ver 1.3.1}
 # CUPS serverbin path differs per distro — ask cups-config (works on Fedora/RHEL/SUSE).
 %global cups_serverbin %(cups-config --serverbin 2>/dev/null || echo %{_prefix}/lib/cups)
 %global debug_package %{nil}
@@ -56,6 +56,11 @@ Free driver by Run The Wall - support us: https://constly.com
 MSG
 
 %changelog
+* Mon Jul 06 2026 Run The Wall <hello@constly.com> - 1.3.1-1
+- Backend: spool the job and write it in one burst. Fixes multi-copy /
+  multi-page jobs losing every page after the first on firmwares that
+  drop data arriving mid-print (HZD950-PRO confirmed by byte capture).
+
 * Mon Jul 06 2026 Run The Wall <hello@constly.com> - 1.3.0-1
 - Fix N copies printing N^2 labels (device copies via raster NumCopies).
 - Spec-compliant "SIZE 100 mm" spacing; MediaTracking option (gap /

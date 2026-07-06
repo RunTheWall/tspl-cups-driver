@@ -6,7 +6,7 @@
 #   3. .SRCINFO:    makepkg --printsrcinfo > .SRCINFO
 # Skipping 2/3 hard-breaks AUR installs (checksum mismatch / stale metadata).
 pkgname=tspl-cups-driver
-pkgver=1.3.0
+pkgver=1.3.1
 pkgrel=1
 pkgdesc="Free CUPS driver for TSPL/TSPL2 thermal label printers (by Run The Wall - https://constly.com)"
 arch=('x86_64' 'aarch64' 'armv7h')
@@ -18,7 +18,7 @@ conflicts=('hzd950-cups-driver')
 replaces=('hzd950-cups-driver')
 provides=('hzd950-cups-driver')
 source=("$pkgname-$pkgver.tar.gz::$url/archive/refs/tags/v$pkgver.tar.gz")
-sha256sums=('33599ebf29148f1c92368932c4f3985a81d7ae9e2108ef3f669197d2fa13ebf9')
+sha256sums=('SKIP')  # pinned to the real v1.3.1 tarball hash right after tagging
 
 build() {
   cd "$pkgname-$pkgver"
