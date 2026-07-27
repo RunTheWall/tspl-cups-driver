@@ -54,6 +54,7 @@ Confirmed and add its USB id to auto-detect.
 | **HZD950-PRO / HERO** | 300 | `0fe6:811e` | ✅ **Tested** |
 | **Munbyn ITPP941 / 941B** (941P: see note) | 203 | `09c6:0426` / generic | 🟢 TSPL |
 | **iDPRT SP410 / SP420** | 203 | `20d1:7008` | 🟢 TSPL |
+| **HPRT SK41** | 203 | `20d1:7008` | ✅ **Tested** |
 | **HPRT N41 / SL42** | 203 | `20d1` family (inferred) | 🟢 TSPL |
 | **Beeprt BY-426** (shared OEM engine) | 203 | `09c6:0426` | 🟢 TSPL |
 | **JADENS JD-168 / JD-268BT** | 203 | `09c6:0426` | 🟢 TSPL |

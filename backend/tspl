@@ -39,7 +39,8 @@
 # non-TSPL device on that id; pin by serial/node if you have both kinds.
 #   09c6:0426  Beeprt/JADENS/Munbyn-ITPP941/Rollo OEM engine
 #              (linux-hardware.org reports it as "Beeprt LabelPrinter")
-#   20d1:7008  iDPRT SP410/SP420 (HPRT = same Hanin parent; Polono unconfirmed)
+#   20d1:7008  iDPRT SP410/SP420, HPRT SK41 (confirmed; same Hanin parent;
+#              Polono unconfirmed)
 #   0fe6:811e  HZD950-PRO / HERO (reference unit) on the shared bridge id
 #   2d84:*     Zhuhai Poskey / Xprinter label printers
 #              (b806 = Poskey DT-108B per usb.ids; b528 seen on XP-460B)
