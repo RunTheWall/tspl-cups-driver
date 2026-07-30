@@ -61,6 +61,7 @@ Confirmed and add its USB id to auto-detect.
 | **Polono PL420** | 203 | unknown | 🟡 community |
 | **Xprinter XP-420B / 460B / 470B** | 203 | `2d84:b528` (460B) / varies | 🟢 TSPL |
 | **Phomemo PM-241 / D520** | 203 | (unverified) | 🟡 community |
+| **Flashlabel Y43BT** | 203 | `5958:0041` | ✅ **Tested** |
 
 <sub>Munbyn's vendor specs list the 941 / 941B as 203 dpi TSPL; the 300 dpi "941P 3.0" has no public
 spec confirming TSPL yet, and the AirPrint "941AP" speaks OPL (excluded below). Polono is grouped with
