@@ -44,7 +44,9 @@
 #   0fe6:811e  HZD950-PRO / HERO (reference unit) on the shared bridge id
 #   2d84:*     Zhuhai Poskey / Xprinter label printers
 #              (b806 = Poskey DT-108B per usb.ids; b528 seen on XP-460B)
-KNOWN_IDS="09c6:0426 20d1:7008 0fe6:811e 2d84:*"
+#   5958:0041  Yxwl OEM engine (FlashLabel Y43BT and other Y4xBT rebadges)
+#              confirmed TSPL via direct write to /dev/usb/lp0
+KNOWN_IDS="09c6:0426 20d1:7008 0fe6:811e 2d84:* 5958:0041"
 
 usb_attr() {   # $1 = usblp minor, $2 = sysfs attr
     sl=$(readlink -f "/sys/dev/char/180:$1" 2>/dev/null) || return

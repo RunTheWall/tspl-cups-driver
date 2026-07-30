@@ -68,6 +68,11 @@ spec confirming TSPL yet, and the AirPrint "941AP" speaks OPL (excluded below). 
 the TSPL clone family by community reports, but the oft-repeated "HPRT rebadge" claim has no public
 evidence (different FCC grantees), so it stays 🟡 until someone reports one.</sub>
 
+<sub>The Y43BT is a 203 dpi head but the PPD defaults to 300 dpi, so add
+  `-o Resolution=203dpi` to the `lpadmin` line below or labels print oversized
+  and clipped. `5958` is the Yxwl OEM engine, so other Y4xBT rebadges should
+  match the same id.</sub>
+
 **Check yours in 10 seconds** (prints nothing): `cat /sys/class/usbmisc/lp0/device/ieee1284_id` —
 most TSPL printers self-describe with `TSPL` in the `CMD:` / `COMMAND SET:` field (the HZD950-PRO
 reports `COMMAND SET:TSPL`), no driver needed. You can also
