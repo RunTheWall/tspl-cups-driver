@@ -1,4 +1,4 @@
-%{!?ver: %global ver 1.3.1}
+%{!?ver: %global ver 1.3.2}
 # CUPS serverbin path differs per distro — ask cups-config (works on Fedora/RHEL/SUSE).
 %global cups_serverbin %(cups-config --serverbin 2>/dev/null || echo %{_prefix}/lib/cups)
 %global debug_package %{nil}
@@ -56,6 +56,11 @@ Free driver by Run The Wall - support us: https://constly.com
 MSG
 
 %changelog
+* Fri Jul 31 2026 Run The Wall <hello@constly.com> - 1.3.2-1
+- Auto-detect the FlashLabel Y43BT / Yxwl OEM engine (5958:0041) — community
+  contribution, tested on real hardware (thanks @rcaril).
+- HPRT SK41 confirmed working on 20d1:7008 (community report).
+
 * Mon Jul 06 2026 Run The Wall <hello@constly.com> - 1.3.1-1
 - Backend: spool the job and write it in one burst. Fixes multi-copy /
   multi-page jobs losing every page after the first on firmwares that

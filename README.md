@@ -42,7 +42,8 @@ Cheap 4×6 USB label printers mostly speak the **same TSPL/TSPL2** language and 
 driver — so one driver covers them. We can only physically test the printers we own, so support is graded
 honestly:
 
-**✅ Confirmed working** (verified on real hardware): **HZD950-PRO / HERO**.
+**✅ Confirmed working** (verified on real hardware): **HZD950-PRO / HERO** (our bench unit), plus
+community-verified **HPRT SK41** and **FlashLabel Y43BT** — thank you, reporters!
 
 Everything else is 🟢 **TSPL-confirmed** (vendor/community docs say it speaks TSPL and our command set
 *should* drive it) or 🟡 **community-reported** — **not yet verified by us.**
@@ -61,7 +62,7 @@ Confirmed and add its USB id to auto-detect.
 | **Polono PL420** | 203 | unknown | 🟡 community |
 | **Xprinter XP-420B / 460B / 470B** | 203 | `2d84:b528` (460B) / varies | 🟢 TSPL |
 | **Phomemo PM-241 / D520** | 203 | (unverified) | 🟡 community |
-| **Flashlabel Y43BT** | 203 | `5958:0041` | ✅ **Tested** |
+| **FlashLabel Y43BT** | 203 | `5958:0041` | ✅ **Tested** |
 
 <sub>Munbyn's vendor specs list the 941 / 941B as 203 dpi TSPL; the 300 dpi "941P 3.0" has no public
 spec confirming TSPL yet, and the AirPrint "941AP" speaks OPL (excluded below). Polono is grouped with
