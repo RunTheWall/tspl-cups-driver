@@ -43,7 +43,7 @@ driver — so one driver covers them. We can only physically test the printers w
 honestly:
 
 **✅ Confirmed working** (verified on real hardware): **HZD950-PRO / HERO** (our bench unit), plus
-community-verified **HPRT SK41** and **FlashLabel Y43BT** — thank you, reporters!
+community-verified **HPRT SK41**, **FlashLabel Y43BT** and **Xprinter XP-420B** — thank you, reporters!
 
 Everything else is 🟢 **TSPL-confirmed** (vendor/community docs say it speaks TSPL and our command set
 *should* drive it) or 🟡 **community-reported** — **not yet verified by us.**
@@ -60,7 +60,8 @@ Confirmed and add its USB id to auto-detect.
 | **Beeprt BY-426** (shared OEM engine) | 203 | `09c6:0426` | 🟢 TSPL |
 | **JADENS JD-168 / JD-268BT** | 203 | `09c6:0426` | 🟢 TSPL |
 | **Polono PL420** | 203 | unknown | 🟡 community |
-| **Xprinter XP-420B / 460B / 470B** | 203 | `2d84:b528` (460B) / varies | 🟢 TSPL |
+| **Xprinter XP-420B** | 203 | `2d37:83d7` | ✅ **Tested** |
+| **Xprinter XP-460B / 470B** | 203 | `2d84:b528` (460B) / varies | 🟢 TSPL |
 | **Phomemo PM-241 / D520** | 203 | (unverified) | 🟡 community |
 | **FlashLabel Y43BT** | 203 | `5958:0041` | ✅ **Tested** |
 
@@ -72,11 +73,15 @@ evidence (different FCC grantees), so it stays 🟡 until someone reports one.</
 <sub>The Y43BT is a 203 dpi head but the PPD defaults to 300 dpi, so add
   `-o Resolution=203dpi` to the `lpadmin` line below or labels print oversized
   and clipped. `5958` is the Yxwl OEM engine, so other Y4xBT rebadges should
-  match the same id.</sub>
+  match the same id. Xprinter units are built by Zhuhai Poskey, who ship under
+  <b>two</b> vendor ids — `2d84` and `2d37` — so the same model can enumerate
+  either way depending on batch; both are auto-detected.</sub>
 
 **Check yours in 10 seconds** (prints nothing): `cat /sys/class/usbmisc/lp0/device/ieee1284_id` —
-most TSPL printers self-describe with `TSPL` in the `CMD:` / `COMMAND SET:` field (the HZD950-PRO
-reports `COMMAND SET:TSPL`), no driver needed. You can also
+many TSPL printers self-describe with `TSPL` in the `CMD:` / `COMMAND SET:` field (the HZD950-PRO
+reports `COMMAND SET:TSPL`), no driver needed. **A missing `TSPL` there doesn't mean no:** the
+XP-420B advertises `CMD:CEZD` and speaks TSPL perfectly well, so if the model is on the list above,
+just try it. You can also
 ask the printer itself: `printf '~!T\r\n' | sudo tee /dev/usb/lp0 >/dev/null; sudo timeout 2 head -c 32
 /dev/usb/lp0` — but many clones are **write-only over USB**, so no reply proves nothing; go by the id
 string or just try a print.
@@ -125,8 +130,14 @@ sudo lpadmin -p HZD950 -E -v tspl://auto -P /usr/share/ppd/tspl/tspl-label.ppd \
 ```
 
 `tspl://auto` finds a known TSPL printer. If yours has an unlisted USB id, the backend prints the id it
-sees — pin it with `-v tspl://<vid>:<pid>` or `-v tspl:///dev/usb/lp0` (and please
+sees — pin it with `-v tspl://<vid>-<pid>` (e.g. `tspl://2d37-83d7`), `-v tspl://<usb-serial>` or
+`-v tspl:///dev/usb/lp0` (and please
 [open an issue](https://github.com/RunTheWall/tspl-cups-driver/issues) with the id so we auto-detect it).
+
+> **Write the USB id with a dash, not a colon.** CUPS reads the `:pid` of `tspl://<vid>:<pid>` as a
+> port number and rejects the URI outright (`lpadmin: Bad device-uri`) unless the pid happens to be all
+> digits — `20d1:7008` is accepted while `0fe6:811e`, `2d84:b528` and `2d37:83d7` are refused. The dash
+> form always works; the colon form still works for the ids CUPS accepts, so existing queues are fine.
 
 <details>
 <summary>Also: one-off <code>.deb</code>/<code>.rpm</code> download · Arch (AUR / PKGBUILD) · NixOS</summary>
