@@ -41,6 +41,31 @@ each_node() { echo "0 /dev/usb/lp0"; }
 STUB
 }
 
+# Buses C and D: a single printer matched only by a vendor-wide wildcard in
+# KNOWN_IDS, one per Poskey vendor id. These are the cases that force auto
+# through is_known(); without them the suite stays green if a wildcard is
+# dropped, or if $k gets quoted so the patterns stop globbing.
+stub_poskey37() {
+    cat <<'STUB'
+usb_attr() {
+    case "$1:$2" in
+        0:idVendor) echo 2d37 ;; 0:idProduct) echo 83d7 ;; 0:serial) echo XP-420B-9Z ;;
+    esac
+}
+each_node() { echo "0 /dev/usb/lp0"; }
+STUB
+}
+stub_poskey84() {
+    cat <<'STUB'
+usb_attr() {
+    case "$1:$2" in
+        0:idVendor) echo 2d84 ;; 0:idProduct) echo b528 ;; 0:serial) echo XP-460B-1A ;;
+    esac
+}
+each_node() { echo "0 /dev/usb/lp0"; }
+STUB
+}
+
 # The code under test: everything above the discovery-mode marker is pure
 # definitions (KNOWN_IDS and the helpers), so it is safe to source whole. The
 # stub is applied AFTER it so the fake bus overrides the real sysfs readers.
@@ -70,6 +95,11 @@ for shell in sh dash bash ksh; do
     check "$shell" stub_mixed auto         /dev/usb/lp0
     check "$shell" stub_mixed AUTO         /dev/usb/lp0
     check "$shell" stub_laser auto         ""
+
+    # auto finds a printer that only a vendor-wide wildcard can match. This is
+    # the case issue #4 reported, and the only coverage KNOWN_IDS globbing has.
+    check "$shell" stub_poskey37 auto      /dev/usb/lp0
+    check "$shell" stub_poskey84 auto      /dev/usb/lp0
 
     # a USB id pins, written with a dash (the spelling CUPS accepts)
     check "$shell" stub_mixed 0fe6-811e    /dev/usb/lp0
