@@ -1,4 +1,4 @@
-%{!?ver: %global ver 1.3.2}
+%{!?ver: %global ver 1.3.3}
 # CUPS serverbin path differs per distro — ask cups-config (works on Fedora/RHEL/SUSE).
 %global cups_serverbin %(cups-config --serverbin 2>/dev/null || echo %{_prefix}/lib/cups)
 %global debug_package %{nil}
@@ -56,6 +56,17 @@ Free driver by Run The Wall - support us: https://constly.com
 MSG
 
 %changelog
+* Sat Aug 22 2026 Run The Wall <hello@constly.com> - 1.3.3-1
+- Auto-detect Zhuhai Poskey's second vendor id, 2d37, so the Xprinter
+  XP-420B is found by tspl://auto (reported on 2d37:83d7).
+- Device URI: write a USB id as vid-pid, e.g. tspl://2d37-83d7. CUPS reads
+  the ":pid" of the old colon spelling as a port number and rejects the URI
+  unless the pid is all digits, which refused 0fe6:811e and 2d84:b528. The
+  colon form still resolves where CUPS accepts it.
+- tspl://AUTO now works in any case, like the ids do.
+- If you installed udev/99-tspl-label.rules by hand, re-copy it to pick up
+  2d37. The rules are not shipped in the package, so upgrading will not.
+
 * Fri Jul 31 2026 Run The Wall <hello@constly.com> - 1.3.2-1
 - Auto-detect the FlashLabel Y43BT / Yxwl OEM engine (5958:0041) — community
   contribution, tested on real hardware (thanks @rcaril).

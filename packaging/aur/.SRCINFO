@@ -1,6 +1,6 @@
 pkgbase = tspl-cups-driver
 	pkgdesc = Free CUPS driver for TSPL/TSPL2 thermal label printers (by Run The Wall - https://constly.com)
-	pkgver = 1.3.2
+	pkgver = 1.3.3
 	pkgrel = 1
 	url = https://github.com/RunTheWall/tspl-cups-driver
 	arch = x86_64
@@ -13,7 +13,7 @@ pkgbase = tspl-cups-driver
 	conflicts = hzd950-cups-driver
 	replaces = hzd950-cups-driver
 	provides = hzd950-cups-driver
-	source = tspl-cups-driver-1.3.2.tar.gz::https://github.com/RunTheWall/tspl-cups-driver/archive/refs/tags/v1.3.2.tar.gz
-	sha256sums = 4c9d4e30c3b4ab829a9234dd8bdaf9fc403445e391131cc9a92cc8a319b1e6a2
+	source = tspl-cups-driver-1.3.3.tar.gz::https://github.com/RunTheWall/tspl-cups-driver/archive/refs/tags/v1.3.3.tar.gz
+	sha256sums = SKIP
 
 pkgname = tspl-cups-driver
