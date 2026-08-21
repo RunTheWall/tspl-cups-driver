@@ -73,9 +73,10 @@ evidence (different FCC grantees), so it stays 🟡 until someone reports one.</
 <sub>The Y43BT is a 203 dpi head but the PPD defaults to 300 dpi, so add
   `-o Resolution=203dpi` to the `lpadmin` line below or labels print oversized
   and clipped. `5958` is the Yxwl OEM engine, so other Y4xBT rebadges should
-  match the same id. Xprinter units are built by Zhuhai Poskey, who ship under
-  <b>two</b> vendor ids — `2d84` and `2d37` — so the same model can enumerate
-  either way depending on batch; both are auto-detected.</sub>
+  match the same id. Xprinter units are built by Zhuhai Poskey, who are registered
+  under <b>two</b> vendor ids, `2d84` and `2d37`; we've seen a 420B report `2d37`
+  and a 460B report `2d84`, so check yours rather than assuming. Both ids are
+  auto-detected.</sub>
 
 **Check yours in 10 seconds** (prints nothing): `cat /sys/class/usbmisc/lp0/device/ieee1284_id` —
 many TSPL printers self-describe with `TSPL` in the `CMD:` / `COMMAND SET:` field (the HZD950-PRO
@@ -230,8 +231,11 @@ your app ─► CUPS ─► gstoraster ─► rastertotspl ─► TSPL ─► ts
 **Build from source:** needs `gcc`, `make`, CUPS dev headers (`sudo apt install build-essential libcups2-dev`,
 or the dnf/pacman/zypper equivalent), then `make`.
 
-**Multiple USB printers?** `tspl://auto` only matches known TSPL ids (never a laser); pin others by
-`vid:pid`/node. Drop in [`udev/99-tspl-label.rules`](udev/99-tspl-label.rules) for a stable
+**Multiple USB printers?** `tspl://auto` only picks a printer whose USB id is on our known list, so it
+won't grab your laser or inkjet. Two of those entries (`2d84`, `2d37`) match a whole vendor, Poskey,
+whose range is label printers — if you own some other Poskey device, pin the queues explicitly rather
+than relying on auto. Pin by `vid-pid`/node. Drop in
+[`udev/99-tspl-label.rules`](udev/99-tspl-label.rules) for a stable
 `/dev/usb/tspl-label` symlink — and with **two label printers**, pin each queue to its per-unit
 `/dev/usb/tspl-label-<serial>` link (the bare symlink points at whichever enumerated last).
 

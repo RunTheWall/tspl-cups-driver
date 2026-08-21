@@ -12,9 +12,10 @@
 #  Confirm your printer really speaks TSPL (prints nothing):
 #     cat /sys/class/usbmisc/lp0/device/ieee1284_id
 #  and look for TSPL in the CMD: / COMMAND SET: field (the HZD950-PRO reports
-#  "COMMAND SET:TSPL").
+#  "COMMAND SET:TSPL"). A missing TSPL string is not a no: the XP-420B
+#  advertises "CMD:CEZD" and drives fine.
 #  (~!T also returns a model string per spec, but many clones are write-only
-#  over USB — don't trust a silent read.)
+#  over USB, so don't trust a silent read.)
 #
 #  Device URI:
 #     tspl://auto            the TSPL label printer (see auto-match below)
@@ -30,7 +31,7 @@
 #
 #  Auto-match: uses the printer whose USB id is a known TSPL id (KNOWN_IDS
 #  below). If yours isn't auto-detected, the error lists the USB printers it
-#  DID find — pin one with tspl://<vid>:<pid> or tspl:///dev/usb/lpN, and please
+#  DID find — pin one with tspl://<vid>-<pid> or tspl:///dev/usb/lpN, and please
 #  open an issue with the id so we can add it to auto-detect.
 #
 #  Maintained FOR FREE by Run The Wall. If it saved you time, try our free
@@ -67,6 +68,9 @@ usb_attr() {   # $1 = usblp minor, $2 = sysfs attr
 }
 vidpid() { echo "$(usb_attr "$1" idVendor):$(usb_attr "$1" idProduct)"; }
 is_known() {   # $1 = "vid:pid"
+    # $k stays unquoted on purpose: entries such as "2d84:*" are glob patterns
+    # matching a whole vendor, not literal strings.
+    # shellcheck disable=SC2254
     for k in $KNOWN_IDS; do case "$1" in $k) return 0 ;; esac; done
     return 1
 }
@@ -74,9 +78,9 @@ each_node() {  # -> "minor node" per usblp device
     for n in /dev/usb/lp*; do [ -e "$n" ] || continue; echo "${n##*lp} $n"; done
 }
 
-# Resolve target node. $1 = auto | serial | vid:pid | /dev/... . Echoes a node.
-# Safe by default: "auto" only matches a KNOWN TSPL usb id — it will NOT grab an
-# unknown printer (e.g. a laser). Pin unknown units by vid:pid or node.
+# Resolve target node. $1 = auto | serial | vid-pid | /dev/... . Echoes a node.
+# Safe by default: "auto" only matches a KNOWN TSPL usb id, so it will not grab
+# an unrelated printer such as a laser. Pin unknown units by vid-pid or node.
 find_node() {
     want=$1
     case "$want" in /dev/*) [ -e "$want" ] && echo "$want"; return ;; esac
@@ -84,12 +88,12 @@ find_node() {
     # lowercase hex, and the dash spelling is the one CUPS lets through (see
     # the Device URI note in the header). A serial is compared as typed, so a
     # serial containing a dash still matches on the serial pass below.
-    id=$(echo "$want" | tr 'A-Z-' 'a-z:')
+    id=$(printf '%s' "$want" | tr 'A-Z-' 'a-z:')
     known=""
     while read -r m n; do
         [ -n "$m" ] || continue
         vp=$(vidpid "$m"); ser=$(usb_attr "$m" serial)
-        case "$want" in
+        case "$id" in
             ''|auto) is_known "$vp" && [ -z "$known" ] && known=$n ;;
             *)       [ "$vp" = "$id" ]    && { echo "$n"; return; }
                      [ "$ser" = "$want" ] && { echo "$n"; return; } ;;
@@ -97,7 +101,7 @@ find_node() {
     done <<EOF
 $(each_node)
 EOF
-    case "$want" in ''|auto) [ -n "$known" ] && echo "$known" ;; esac
+    case "$id" in ''|auto) [ -n "$known" ] && echo "$known" ;; esac
 }
 
 # --- discovery mode (no args) ---
