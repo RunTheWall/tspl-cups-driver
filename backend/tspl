@@ -19,8 +19,14 @@
 #  Device URI:
 #     tspl://auto            the TSPL label printer (see auto-match below)
 #     tspl://<usb-serial>    a specific unit by its USB serial
-#     tspl://<vid>:<pid>     a specific USB id, e.g. tspl://20d1:7008
+#     tspl://<vid>-<pid>     a specific USB id, e.g. tspl://2d37-83d7
 #     tspl:///dev/usb/lp0    a specific device node
+#
+#  Write a USB id with a DASH. CUPS parses the ":pid" of tspl://<vid>:<pid>
+#  as a port number and rejects the whole URI unless the pid happens to be
+#  all digits — lpadmin refuses 0fe6:811e, 2d84:b528 and 2d37:83d7, while
+#  20d1:7008 sails through. The colon form is still accepted here for the
+#  ids where it works, so existing queues keep printing.
 #
 #  Auto-match: uses the printer whose USB id is a known TSPL id (KNOWN_IDS
 #  below). If yours isn't auto-detected, the error lists the USB printers it
@@ -44,9 +50,12 @@
 #   0fe6:811e  HZD950-PRO / HERO (reference unit) on the shared bridge id
 #   2d84:*     Zhuhai Poskey / Xprinter label printers
 #              (b806 = Poskey DT-108B per usb.ids; b528 seen on XP-460B)
+#   2d37:*     Zhuhai Poskey again — usb.ids registers the SAME company under
+#              two vendor ids; 83d7 reported on an XP-420B. Wildcarded like
+#              2d84 since every Poskey product seen so far is a label printer.
 #   5958:0041  Yxwl OEM engine (FlashLabel Y43BT and other Y4xBT rebadges);
 #              confirmed TSPL via direct write to /dev/usb/lp0
-KNOWN_IDS="09c6:0426 20d1:7008 0fe6:811e 2d84:* 5958:0041"
+KNOWN_IDS="09c6:0426 20d1:7008 0fe6:811e 2d84:* 2d37:* 5958:0041"
 
 usb_attr() {   # $1 = usblp minor, $2 = sysfs attr
     sl=$(readlink -f "/sys/dev/char/180:$1" 2>/dev/null) || return
@@ -71,14 +80,19 @@ each_node() {  # -> "minor node" per usblp device
 find_node() {
     want=$1
     case "$want" in /dev/*) [ -e "$want" ] && echo "$want"; return ;; esac
+    # Accept a USB id as vid-pid or vid:pid, in either case: sysfs reports
+    # lowercase hex, and the dash spelling is the one CUPS lets through (see
+    # the Device URI note in the header). A serial is compared as typed, so a
+    # serial containing a dash still matches on the serial pass below.
+    id=$(echo "$want" | tr 'A-Z-' 'a-z:')
     known=""
     while read -r m n; do
         [ -n "$m" ] || continue
         vp=$(vidpid "$m"); ser=$(usb_attr "$m" serial)
         case "$want" in
             ''|auto) is_known "$vp" && [ -z "$known" ] && known=$n ;;
-            *:*)     [ "$vp" = "$want" ] && { echo "$n"; return; } ;;
-            *)       [ "$ser" = "$want" ] && { echo "$n"; return; } ;;
+            *)       [ "$vp" = "$id" ]    && { echo "$n"; return; }
+                     [ "$ser" = "$want" ] && { echo "$n"; return; } ;;
         esac
     done <<EOF
 $(each_node)
@@ -112,7 +126,8 @@ if [ -z "$DEV" ]; then
     each_node | while read -r m n; do
         echo "ERROR:   $n  (usb $(vidpid "$m"), serial $(usb_attr "$m" serial))" 1>&2
     done
-    echo "ERROR: pick one with device URI tspl://<vid>:<pid> or tspl:///dev/usb/lpN" 1>&2
+    echo "ERROR: pin one with tspl://<vid>-<pid> (dash, e.g. tspl://2d37-83d7)," 1>&2
+    echo "ERROR: tspl://<usb-serial>, or tspl:///dev/usb/lpN" 1>&2
     exit 1
 fi
 echo "INFO: using TSPL printer at $DEV (usb $(vidpid "${DEV##*lp}"))" 1>&2
