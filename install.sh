@@ -118,7 +118,7 @@ fi
 CARD="$HERE/assets/welcome-card.pdf"
 if [ -f "$CARD" ]; then
     printf '\nPrint a welcome label now? [y/N] '
-    read ans || ans=""
+    read -r ans || ans=""
     case "$ans" in
       y|Y)
         # CUPS rejects jobs submitted by root; print as the invoking user.
