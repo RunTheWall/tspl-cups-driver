@@ -1,4 +1,4 @@
-%{!?ver: %global ver 1.3.3}
+%{!?ver: %global ver 1.3.4}
 # CUPS serverbin path differs per distro — ask cups-config (works on Fedora/RHEL/SUSE).
 %global cups_serverbin %(cups-config --serverbin 2>/dev/null || echo %{_prefix}/lib/cups)
 %global debug_package %{nil}
@@ -56,6 +56,20 @@ Free driver by Run The Wall - support us: https://constly.com
 MSG
 
 %changelog
+* Wed Sep 02 2026 Run The Wall <hello@constly.com> - 1.3.4-1
+- Auto-detect the 123inkt LW650XL PRO / "QIN LabelPrinter" (2e3c:5757) —
+  community contribution, tested on real hardware (thanks @owlot). 300 dpi
+  head; ieee1284_id says CMD:XPP,XL with no TSPL string, like the XP-420B.
+- 2e3c is Artery's AT32 MCU vendor id, not a printer maker's, so the entry
+  is matched on the exact pair only.
+- Fix: tspl://auto could find no printer at all when cupsd ran in the
+  foreground (cupsd -f) from a directory holding a file named like a
+  wildcard entry (2d84:...). The known-id list is now matched with
+  pathname expansion off.
+- If you installed udev/99-tspl-label.rules by hand, re-copy it to pick up
+  2e3c:5757. The rules are not shipped in the package, so upgrading will
+  not.
+
 * Sat Aug 22 2026 Run The Wall <hello@constly.com> - 1.3.3-1
 - Auto-detect Zhuhai Poskey's second vendor id, 2d37, so the Xprinter
   XP-420B is found by tspl://auto (reported on 2d37:83d7).
