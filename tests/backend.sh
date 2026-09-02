@@ -66,6 +66,20 @@ each_node() { echo "0 /dev/usb/lp0"; }
 STUB
 }
 
+# Bus E: an LW650XL PRO on its own. The only exact-match entry that sits
+# after the wildcards in KNOWN_IDS, so a typo in the token or a dropped entry
+# turns this red instead of merging green.
+stub_qin() {
+    cat <<'STUB'
+usb_attr() {
+    case "$1:$2" in
+        0:idVendor) echo 2e3c ;; 0:idProduct) echo 5757 ;; 0:serial) echo LW650-3F ;;
+    esac
+}
+each_node() { echo "0 /dev/usb/lp0"; }
+STUB
+}
+
 # The code under test: everything above the discovery-mode marker is pure
 # definitions (KNOWN_IDS and the helpers), so it is safe to source whole. The
 # stub is applied AFTER it so the fake bus overrides the real sysfs readers.
@@ -100,6 +114,9 @@ for shell in sh dash bash ksh; do
     # the case issue #4 reported, and the only coverage KNOWN_IDS globbing has.
     check "$shell" stub_poskey37 auto      /dev/usb/lp0
     check "$shell" stub_poskey84 auto      /dev/usb/lp0
+
+    # an exact-match id listed after the wildcards still resolves
+    check "$shell" stub_qin auto           /dev/usb/lp0
 
     # a USB id pins, written with a dash (the spelling CUPS accepts)
     check "$shell" stub_mixed 0fe6-811e    /dev/usb/lp0
