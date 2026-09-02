@@ -200,6 +200,13 @@ the next gap, wasting 1-2 labels before it resyncs. Measure your stock's actual 
 `-o GapLength=<tenths of mm>` (e.g. `-o GapLength=20` for 2.0mm), or bake it into the queue like the
 other options below.
 
+On **Continuous** stock there's no sensor to stop the feed at the real label boundary, so the printer
+just trusts `SIZE`'s height as the full feed pitch. Sending only the label's own height undershoots by
+the physical gap between labels — each print lands a bit further into the next label. To compensate,
+`GapLength` is added to `SIZE`'s height on Continuous queues (it isn't sent as a `GAP`/`BLINE` command
+there, since Continuous means no sensing at all); set it to your stock's actual inter-label spacing —
+`0` if labels butt up against each other with no gap at all.
+
 <details>
 <summary><b>Two queues: crisp labels + a "photo" (Gathering) queue</b></summary>
 
