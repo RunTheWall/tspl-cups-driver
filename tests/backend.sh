@@ -17,11 +17,12 @@ fails=0
 # The checks run from a scratch directory seeded with files named after the
 # wildcard entries. $KNOWN_IDS is split unquoted, so unless is_known() turns
 # pathname expansion off the shell swaps "2d84:*" for a matching filename
-# before case ever sees it — and cupsd -f / launchd leave the backend in
-# cupsd's own directory, not /. With the decoys in place the wildcard checks
-# below go red if that guard is ever dropped.
+# before case ever sees it — and cupsd only chdirs to / when it daemonizes,
+# so a hand-run cupsd -f leaves the backend in that shell's directory. With
+# the decoys in place the wildcard checks below go red if that guard is ever
+# dropped.
 scratch=$(mktemp -d)
-trap 'rm -rf "$scratch"' EXIT
+trap 'cd / && rm -rf "$scratch" || :' EXIT
 : > "$scratch/2d84:zz"
 : > "$scratch/2d37:zz"
 cd "$scratch"

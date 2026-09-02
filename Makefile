@@ -18,6 +18,8 @@ tests/mkras: tests/mkras.c
 
 test: src/rastertotspl tests/mkras
 	sh tests/smoke.sh
+	sh tests/backend.sh
+	sh tests/ids.sh
 
 clean:
 	rm -f src/rastertotspl tests/mkras
