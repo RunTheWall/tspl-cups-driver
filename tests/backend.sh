@@ -11,8 +11,20 @@
 # ============================================================================
 set -eu
 cd "$(dirname "$0")/.."
-BACKEND=backend/tspl
+BACKEND=$PWD/backend/tspl
 fails=0
+
+# The checks run from a scratch directory seeded with files named after the
+# wildcard entries. $KNOWN_IDS is split unquoted, so unless is_known() turns
+# pathname expansion off the shell swaps "2d84:*" for a matching filename
+# before case ever sees it — and cupsd -f / launchd leave the backend in
+# cupsd's own directory, not /. With the decoys in place the wildcard checks
+# below go red if that guard is ever dropped.
+scratch=$(mktemp -d)
+trap 'rm -rf "$scratch"' EXIT
+: > "$scratch/2d84:zz"
+: > "$scratch/2d37:zz"
+cd "$scratch"
 
 # Bus A: HZD950-PRO, an XP-420B whose serial contains a dash, and a laser that
 # must never be auto-matched.
@@ -102,7 +114,7 @@ check() {  # check <shell> <stub> <want> <expected node>
 }
 
 for shell in sh dash bash ksh; do
-    command -v "$shell" >/dev/null 2>&1 || continue
+    command -v "$shell" >/dev/null 2>&1 || { echo "-- $shell: not installed, skipped"; continue; }
     echo "-- $shell"
 
     # auto picks the first known TSPL printer, in any case, and never the laser

@@ -14,13 +14,15 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - name: Install build deps
-        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends build-essential libcups2-dev shellcheck
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends build-essential libcups2-dev shellcheck ksh
       - name: Build
         run: make -s && file src/rastertotspl
       - name: Smoke test (synthetic raster -> expected TSPL bytes)
         run: sh tests/smoke.sh
       - name: Backend tests (device resolution, stubbed USB bus)
         run: sh tests/backend.sh
+      - name: Known ids mirrored in the udev rules and README
+        run: sh tests/ids.sh
       - name: Scripts parse
         run: |
           sh -n install.sh
@@ -28,5 +30,6 @@ jobs:
           sh -n backend/tspl
           sh -n tests/smoke.sh
           sh -n tests/backend.sh
+          sh -n tests/ids.sh
       - name: Shellcheck
         run: shellcheck -s sh backend/tspl tests/*.sh install.sh packaging/deb/build.sh packaging/deb/postinst

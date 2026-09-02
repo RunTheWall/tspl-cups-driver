@@ -39,11 +39,13 @@
 #  SPDX-License-Identifier: MIT
 # ============================================================================
 
-# Known TSPL-label USB ids, used only to disambiguate when several USB printers
-# are attached. NB: 0fe6:811e is a squatted "ICS Advent Parallel Adapter" id —
-# a generic USB-parallel printer bridge also seen on unrelated ESC/POS receipt
-# printers (Gainscha GP80, Geyi Q583P) — so auto-match can still pick a
-# non-TSPL device on that id; pin by serial/node if you have both kinds.
+# Known TSPL-label USB ids — the only ids tspl://auto will match, and the only
+# printers discovery mode advertises; anything else has to be pinned by
+# vid-pid, serial or node. NB: 0fe6:811e is a squatted "ICS Advent Parallel
+# Adapter" id — a generic USB-parallel printer bridge also seen on unrelated
+# ESC/POS receipt printers (Gainscha GP80, Geyi Q583P) — so auto-match can
+# still pick a non-TSPL device on that id; pin by serial/node if you have both
+# kinds.
 #   09c6:0426  Beeprt/JADENS/Munbyn-ITPP941/Rollo OEM engine
 #              (linux-hardware.org reports it as "Beeprt LabelPrinter")
 #   20d1:7008  iDPRT SP410/SP420, HPRT SK41 (confirmed; same Hanin parent;
@@ -76,9 +78,16 @@ usb_attr() {   # $1 = usblp minor, $2 = sysfs attr
 vidpid() { echo "$(usb_attr "$1" idVendor):$(usb_attr "$1" idProduct)"; }
 is_known() {   # $1 = "vid:pid"
     # $k stays unquoted on purpose: entries such as "2d84:*" are glob patterns
-    # matching a whole vendor, not literal strings.
-    # shellcheck disable=SC2254
-    for k in $KNOWN_IDS; do case "$1" in $k) return 0 ;; esac; done
+    # matching a whole vendor, not literal strings. Pathname expansion is off
+    # while the list is split, or the shell would first try each pattern
+    # against the CWD — cupsd -f and launchd leave the backend in cupsd's own
+    # directory, and a file named 2d84:anything there would replace the entry.
+    set -f
+    for k in $KNOWN_IDS; do
+        # shellcheck disable=SC2254
+        case "$1" in $k) set +f; return 0 ;; esac
+    done
+    set +f
     return 1
 }
 each_node() {  # -> "minor node" per usblp device
