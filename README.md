@@ -183,6 +183,7 @@ The Pi renders, so **clients never install a driver** — they just add the shar
 | **Darkness** | `0`–`15` (default 8) | `DENSITY` |
 | **Print Speed** | `1`–`6` in/sec (default 4) · Printer default (sends nothing) | `SPEED` |
 | **Media tracking** | **Die-cut (gap)** · Black-mark · Continuous · Printer setting | `GAP` / `BLINE` |
+| **Gap/black-mark length** | `1.5`–`5.0` mm (default 3.0mm) | the `<n>` in `GAP`/`BLINE` |
 | **Resolution** | `203` / `300` dpi | — |
 
 Loaded **black-mark or continuous stock** instead of die-cut labels? Set it per queue —
@@ -192,6 +193,19 @@ media makes the printer hunt for a gap and error out. And after any media change
 TSPL firmwares skip or garble labels when `SIZE` disagrees with the stock. Note `PrinterDefault`
 sends no boundary command at all — and GAP/BLINE **persist in printer memory**, so such a queue
 inherits whatever the last job set (e.g. `GAP 0` from a Continuous queue sharing the printer).
+
+The **3.0mm gap default is only a guess** — many small die-cut labels use a shorter gap (as low as
+~1.5mm). A mismatch here doesn't stop printing outright; it makes the firmware overshoot hunting for
+the next gap, wasting 1-2 labels before it resyncs. Measure your stock's actual gap and set it with
+`-o GapLength=<tenths of mm>` (e.g. `-o GapLength=20` for 2.0mm), or bake it into the queue like the
+other options below.
+
+On **Continuous** stock there's no sensor to stop the feed at the real label boundary, so the printer
+just trusts `SIZE`'s height as the full feed pitch. Sending only the label's own height undershoots by
+the physical gap between labels — each print lands a bit further into the next label. To compensate,
+`GapLength` is added to `SIZE`'s height on Continuous queues (it isn't sent as a `GAP`/`BLINE` command
+there, since Continuous means no sensing at all); set it to your stock's actual inter-label spacing —
+`0` if labels butt up against each other with no gap at all.
 
 <details>
 <summary><b>Two queues: crisp labels + a "photo" (Gathering) queue</b></summary>

@@ -24,7 +24,13 @@
  *     Darkness   (0..15)            -> DENSITY
  *     PrintSpeed (10..60 = ips x10) -> SPEED (in/sec); 0 = omit (printer default)
  *     MediaTracking Gap / BlackMark / Continuous / PrinterDefault
- *                                   -> GAP 3 mm / BLINE 3 mm / GAP 0 / (omitted)
+ *                                   -> GAP <n> mm / BLINE <n> mm / GAP 0 / (omitted)
+ *     GapLength (tenths of mm, e.g. 30 = 3.0mm) -> the <n> above; default 3.0mm.
+ *                                   On Continuous stock (no gap sensor to stop
+ *                                   the feed on its own) GapLength is instead
+ *                                   added to SIZE's height, so the printer
+ *                                   feeds the full label+gap pitch per label
+ *                                   instead of landing mid-label next print.
  *     Horizontal,Vertical (dots)    -> REFERENCE
  *     PrintMode  0 None / 2 Diffusion / 3 Gathering / 4 ErrorDiffusion / 5 Default
  *                -> halftone used to flatten 8bpp grey into 1bpp dots.
@@ -110,21 +116,35 @@ int main(int argc, char *argv[])
     int href      = opt_int(ppd, num_options, options, "Horizontal", 0);
     int vref      = opt_int(ppd, num_options, options, "Vertical",   0);
 
+    /* GapLength: physical gap/black-mark length in tenths of mm (30 = 3.0mm).
+     * The stock 3mm assumption is wrong often enough on small die-cut labels
+     * (seen as low as ~1.5-2mm) that a mismatch makes the firmware overshoot
+     * hunting for the next boundary, wasting 1-2 labels before it resyncs. */
+    int gap_tenths = opt_int(ppd, num_options, options, "GapLength", 30);
+    if (gap_tenths < 0) gap_tenths = 0;
+    double gap_mm = gap_tenths / 10.0;
+
     /* MediaTracking -> the boundary command. GAP/BLINE select the sensor;
      * sending GAP to continuous or black-mark stock makes the firmware hunt
      * for a gap that never comes (feeds a label + margin, then errors), so an
      * unrecognized value must not silently fall through without a warning.
-     * Resolved to a static string here because ppdClose frees the choice. */
-    const char *track = "GAP 3 mm,0 mm\r\n";              /* Gap (die-cut) */
+     * Resolved to a fixed buffer here because ppdClose frees the choice. */
+    char track[32] = "";
+    int continuous = 0;
+    snprintf(track, sizeof track, "GAP %.1f mm,0 mm\r\n", gap_mm); /* Gap (die-cut) */
     {
         const char *v = cupsGetOption("MediaTracking", num_options, options);
         ppd_choice_t *c;
         if (!v && ppd && (c = ppdFindMarkedChoice(ppd, "MediaTracking")) != NULL)
             v = c->choice;
         if (v && *v) {
-            if      (!strcasecmp(v, "BlackMark"))      track = "BLINE 3 mm,0 mm\r\n";
-            else if (!strcasecmp(v, "Continuous"))     track = "GAP 0 mm,0 mm\r\n";
-            else if (!strcasecmp(v, "PrinterDefault")) track = ""; /* stored setting */
+            if (!strcasecmp(v, "BlackMark"))
+                snprintf(track, sizeof track, "BLINE %.1f mm,0 mm\r\n", gap_mm);
+            else if (!strcasecmp(v, "Continuous")) {
+                strcpy(track, "GAP 0 mm,0 mm\r\n");
+                continuous = 1;
+            }
+            else if (!strcasecmp(v, "PrinterDefault")) track[0] = '\0'; /* stored setting */
             else if (strcasecmp(v, "Gap"))
                 fprintf(stderr, "WARNING: unknown MediaTracking '%s' — assuming "
                         "Gap (die-cut); use Gap, BlackMark, Continuous or "
@@ -257,7 +277,14 @@ int main(int argc, char *argv[])
          * CRLF is the cheapest way back to command mode (pdf2tspl et al). */
         int wmm = (int)lround((double)W * 25.4 / resx);
         int hmm = (int)lround((double)H * 25.4 / resy);
-        printf("\r\nSIZE %d mm,%d mm\r\n", wmm, hmm);
+        /* Continuous stock has no gap sensor, so the printer can't stop on its
+         * own at the next label — it trusts SIZE's height as the full feed
+         * pitch. Sending just the label height (hmm) undershoots by however
+         * big the physical inter-label gap really is, landing mid-label on
+         * the next print. Gap/BlackMark modes don't need this: the sensor
+         * finds the real boundary regardless of what SIZE says. */
+        int size_hmm = continuous ? hmm + (int)lround(gap_mm) : hmm;
+        printf("\r\nSIZE %d mm,%d mm\r\n", wmm, size_hmm);
         fputs(track, stdout);
         printf("DENSITY %d\r\n", darkness);
         if (speed_ips >= 1)
