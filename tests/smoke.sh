@@ -26,7 +26,7 @@ od -An -v -tx1 < "$OUT" | tr -d ' \n' > "$OUT.hex"
 
 # --- the TSPL header, line by line (12x8 px @300dpi -> 1x1 mm; note the
 #     spec-required space before "mm") ---
-for cmd in 'SIZE 1 mm,1 mm' 'GAP 3 mm,0 mm' 'DENSITY 8' 'SPEED 4' \
+for cmd in 'SIZE 1 mm,1 mm' 'GAP 3.0 mm,0 mm' 'DENSITY 8' 'SPEED 4' \
            'DIRECTION 0,0' 'REFERENCE 0,0' 'CLS'; do
     grep -q "^$cmd" "$OUT.txt" || fail "missing TSPL command: $cmd"
 done
@@ -53,7 +53,7 @@ grep -q '^PRINT 1,3$' "$OUT.txt" && fail "argv[4] copies leaked into PRINT"
 # --- option handling: BlackMark -> BLINE (no GAP), PrintSpeed=0 -> no SPEED ---
 src/rastertotspl 1 tester smoke 1 'MediaTracking=BlackMark PrintSpeed=0' \
     < "$OUT.ras" 2>/dev/null | tr -d '\r' > "$OUT.txt"
-grep -q  '^BLINE 3 mm,0 mm' "$OUT.txt" || fail "BlackMark should emit BLINE"
+grep -q  '^BLINE 3.0 mm,0 mm' "$OUT.txt" || fail "BlackMark should emit BLINE"
 grep -q  '^GAP'   "$OUT.txt" && fail "BlackMark must not also emit GAP"
 grep -q  '^SPEED' "$OUT.txt" && fail "PrintSpeed=0 must omit SPEED"
 
@@ -62,5 +62,14 @@ src/rastertotspl 1 tester smoke 1 'MediaTracking=Continuous PrintSpeed=9' \
     < "$OUT.ras" 2>/dev/null | tr -d '\r' > "$OUT.txt"
 grep -q '^GAP 0 mm,0 mm' "$OUT.txt" || fail "Continuous should emit GAP 0"
 grep -q '^SPEED 6$' "$OUT.txt" || fail "PrintSpeed=9 should clamp to SPEED 6"
+
+# --- GapLength (tenths of mm): custom value on Gap and BlackMark tracking ---
+src/rastertotspl 1 tester smoke 1 'GapLength=20' \
+    < "$OUT.ras" 2>/dev/null | tr -d '\r' > "$OUT.txt"
+grep -q '^GAP 2.0 mm,0 mm' "$OUT.txt" || fail "GapLength=20 should emit GAP 2.0 mm"
+
+src/rastertotspl 1 tester smoke 1 'MediaTracking=BlackMark GapLength=15' \
+    < "$OUT.ras" 2>/dev/null | tr -d '\r' > "$OUT.txt"
+grep -q '^BLINE 1.5 mm,0 mm' "$OUT.txt" || fail "GapLength=15 should emit BLINE 1.5 mm"
 
 echo "smoke test OK"

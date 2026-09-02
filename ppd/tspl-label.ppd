@@ -111,6 +111,23 @@
 *MediaTracking PrinterDefault/Use printer setting: ""
 *CloseUI: *MediaTracking
 
+*OpenUI *GapLength/Gap/Black-mark length (mm): PickOne
+*OrderDependency: 46 AnySetup *GapLength
+*% Physical length of the gap (die-cut) or black mark on the label stock, sent
+*% as the second SIZE-boundary argument (GAP <n> mm / BLINE <n> mm). Wrong
+*% value = firmware overshoots hunting for the next boundary and wastes
+*% labels. Measure your stock; 3mm is a common default but many small
+*% die-cut labels use ~1.5-2mm. Ignored when Media tracking is Continuous
+*% or Use printer setting.
+*DefaultGapLength: 30
+*GapLength 15/1.5 mm: ""
+*GapLength 20/2.0 mm: ""
+*GapLength 25/2.5 mm: ""
+*GapLength 30/3.0 mm (default): ""
+*GapLength 40/4.0 mm: ""
+*GapLength 50/5.0 mm: ""
+*CloseUI: *GapLength
+
 *OpenUI *Darkness/Darkness: PickOne
 *OrderDependency: 50 AnySetup *Darkness
 *DefaultDarkness: 8
