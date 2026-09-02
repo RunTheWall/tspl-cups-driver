@@ -20,6 +20,7 @@
 #   2d84:*     Zhuhai Poskey / Xprinter label printers (b806 DT-108B, b528 XP-460B)
 #   2d37:*     Zhuhai Poskey's second vendor id (83d7 XP-420B)
 #   5958:0041  Yxwl OEM engine (FlashLabel Y43BT and other Y4xBT rebadges)
+#   2e3c:5757  123inkt LW650XL PRO / "QIN LabelPrinter" (Aimo/Quyin OEM engine)
 SUBSYSTEM!="usbmisc", GOTO="tspl_end"
 KERNEL!="lp[0-9]*", GOTO="tspl_end"
 ATTRS{idVendor}=="0fe6", ATTRS{idProduct}=="811e", GOTO="tspl_link"
@@ -28,6 +29,7 @@ ATTRS{idVendor}=="20d1", ATTRS{idProduct}=="7008", GOTO="tspl_link"
 ATTRS{idVendor}=="2d84", GOTO="tspl_link"
 ATTRS{idVendor}=="2d37", GOTO="tspl_link"
 ATTRS{idVendor}=="5958", ATTRS{idProduct}=="0041", GOTO="tspl_link"
+ATTRS{idVendor}=="2e3c", ATTRS{idProduct}=="5757", GOTO="tspl_link"
 GOTO="tspl_end"
 LABEL="tspl_link"
 SYMLINK+="usb/tspl-label"

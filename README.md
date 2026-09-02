@@ -43,7 +43,8 @@ driver — so one driver covers them. We can only physically test the printers w
 honestly:
 
 **✅ Confirmed working** (verified on real hardware): **HZD950-PRO / HERO** (our bench unit), plus
-community-verified **HPRT SK41**, **FlashLabel Y43BT** and **Xprinter XP-420B** — thank you, reporters!
+community-verified **HPRT SK41**, **FlashLabel Y43BT**, **Xprinter XP-420B** and **123inkt LW650XL PRO** —
+thank you, reporters!
 
 Everything else is 🟢 **TSPL-confirmed** (vendor/community docs say it speaks TSPL and our command set
 *should* drive it) or 🟡 **community-reported** — **not yet verified by us.**
@@ -64,6 +65,7 @@ Confirmed and add its USB id to auto-detect.
 | **Xprinter XP-460B / 470B** | 203 | `2d84:b528` (460B) / varies | 🟢 TSPL |
 | **Phomemo PM-241 / D520** | 203 | (unverified) | 🟡 community |
 | **FlashLabel Y43BT** | 203 | `5958:0041` | ✅ **Tested** |
+| **123inkt LW650XL PRO** ("QIN LabelPrinter") | 300 | `2e3c:5757` | ✅ **Tested** |
 
 <sub>Munbyn's vendor specs list the 941 / 941B as 203 dpi TSPL; the 300 dpi "941P 3.0" has no public
 spec confirming TSPL yet, and the AirPrint "941AP" speaks OPL (excluded below). Polono is grouped with
@@ -76,13 +78,15 @@ evidence (different FCC grantees), so it stays 🟡 until someone reports one.</
   match the same id. Xprinter units are built by Zhuhai Poskey, who are registered
   under <b>two</b> vendor ids, `2d84` and `2d37`; we've seen a 420B report `2d37`
   and a 460B report `2d84`, so check yours rather than assuming. Both ids are
-  auto-detected.</sub>
+  auto-detected. The LW650XL PRO shows up as `2e3c`, which is the Artery AT32
+  microcontroller vendor id rather than a printer maker's, so it is matched on
+  the exact `2e3c:5757` pair only.</sub>
 
 **Check yours in 10 seconds** (prints nothing): `cat /sys/class/usbmisc/lp0/device/ieee1284_id` —
 many TSPL printers self-describe with `TSPL` in the `CMD:` / `COMMAND SET:` field (the HZD950-PRO
 reports `COMMAND SET:TSPL`), no driver needed. **A missing `TSPL` there doesn't mean no:** the
-XP-420B advertises `CMD:CEZD` and speaks TSPL perfectly well, so if the model is on the list above,
-just try it. You can also
+XP-420B advertises `CMD:CEZD`, the LW650XL PRO `CMD:XPP,XL`, and both speak TSPL perfectly well, so if
+the model is on the list above, just try it. You can also
 ask the printer itself: `printf '~!T\r\n' | sudo tee /dev/usb/lp0 >/dev/null; sudo timeout 2 head -c 32
 /dev/usb/lp0` — but many clones are **write-only over USB**, so no reply proves nothing; go by the id
 string or just try a print.

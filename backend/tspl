@@ -56,7 +56,14 @@
 #              2d84 since every Poskey product seen so far is a label printer.
 #   5958:0041  Yxwl OEM engine (FlashLabel Y43BT and other Y4xBT rebadges);
 #              confirmed TSPL via direct write to /dev/usb/lp0
-KNOWN_IDS="09c6:0426 20d1:7008 0fe6:811e 2d84:* 2d37:* 5958:0041"
+#   2e3c:5757  123inkt LW650XL PRO (USB strings "QIN LabelPrinter"; an
+#              Aimo/Quyin OEM unit). NB: 2e3c is Artery's AT32 MCU vendor
+#              id, not a printer maker's, and absent from usb.ids, so other
+#              Quyin rebadges may well share it — keep it pinned to :5757,
+#              never 2e3c:*. ieee1284_id says "CMD:XPP,XL", no TSPL string
+#              (see the XP-420B note in the header); confirmed by direct
+#              write to /dev/usb/lp0
+KNOWN_IDS="09c6:0426 20d1:7008 0fe6:811e 2d84:* 2d37:* 5958:0041 2e3c:5757"
 
 usb_attr() {   # $1 = usblp minor, $2 = sysfs attr
     sl=$(readlink -f "/sys/dev/char/180:$1" 2>/dev/null) || return
