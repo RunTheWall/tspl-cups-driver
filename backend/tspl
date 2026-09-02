@@ -39,11 +39,13 @@
 #  SPDX-License-Identifier: MIT
 # ============================================================================
 
-# Known TSPL-label USB ids, used only to disambiguate when several USB printers
-# are attached. NB: 0fe6:811e is a squatted "ICS Advent Parallel Adapter" id —
-# a generic USB-parallel printer bridge also seen on unrelated ESC/POS receipt
-# printers (Gainscha GP80, Geyi Q583P) — so auto-match can still pick a
-# non-TSPL device on that id; pin by serial/node if you have both kinds.
+# Known TSPL-label USB ids — tspl://auto matches nothing else, and discovery
+# mode advertises tspl://auto only when one of these is attached; any other
+# printer has to be pinned by vid-pid, serial or node. NB: 0fe6:811e is a
+# squatted "ICS Advent Parallel Adapter" id — a generic USB-parallel printer
+# bridge also seen on unrelated ESC/POS receipt printers (Gainscha GP80, Geyi
+# Q583P) — so auto-match can still pick a non-TSPL device on that id; pin by
+# serial/node if you have both kinds.
 #   09c6:0426  Beeprt/JADENS/Munbyn-ITPP941/Rollo OEM engine
 #              (linux-hardware.org reports it as "Beeprt LabelPrinter")
 #   20d1:7008  iDPRT SP410/SP420, HPRT SK41 (confirmed; same Hanin parent;
@@ -76,10 +78,18 @@ usb_attr() {   # $1 = usblp minor, $2 = sysfs attr
 vidpid() { echo "$(usb_attr "$1" idVendor):$(usb_attr "$1" idProduct)"; }
 is_known() {   # $1 = "vid:pid"
     # $k stays unquoted on purpose: entries such as "2d84:*" are glob patterns
-    # matching a whole vendor, not literal strings.
-    # shellcheck disable=SC2254
-    for k in $KNOWN_IDS; do case "$1" in $k) return 0 ;; esac; done
-    return 1
+    # matching a whole vendor, not literal strings. The subshell keeps
+    # pathname expansion off while the list is split, or the shell would
+    # first try each pattern against the CWD: cupsd only chdirs to / when it
+    # daemonizes, so a hand-run cupsd -f (or a unit with its own
+    # WorkingDirectory) leaves the backend in that directory, where a file
+    # named 2d84:anything would replace the entry before case sees it.
+    (
+        set -f
+        # shellcheck disable=SC2254
+        for k in $KNOWN_IDS; do case "$1" in $k) exit 0 ;; esac; done
+        exit 1
+    )
 }
 each_node() {  # -> "minor node" per usblp device
     for n in /dev/usb/lp*; do [ -e "$n" ] || continue; echo "${n##*lp} $n"; done
