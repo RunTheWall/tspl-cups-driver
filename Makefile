@@ -16,10 +16,10 @@ src/rastertotspl: src/rastertotspl.c
 tests/mkras: tests/mkras.c
 	$(CC) $(CFLAGS) -o $@ $< $(LIBS)
 
-test: src/rastertotspl tests/mkras
-	sh tests/smoke.sh
+test:   # smoke.sh builds the filter itself
 	sh tests/backend.sh
 	sh tests/ids.sh
+	sh tests/smoke.sh
 
 clean:
 	rm -f src/rastertotspl tests/mkras

@@ -6,7 +6,7 @@
 #  each_node(), so both are stubbed with a fake USB bus and the real function
 #  is sourced straight out of backend/tspl. No printer, no root, no CUPS.
 #
-#  Run:  sh tests/backend.sh     (CI runs it under each shell it can find)
+#  Run:  sh tests/backend.sh     (CI runs it under sh, dash, bash and ksh)
 #  SPDX-License-Identifier: MIT
 # ============================================================================
 set -eu
@@ -15,12 +15,11 @@ BACKEND=$PWD/backend/tspl
 fails=0
 
 # The checks run from a scratch directory seeded with files named after the
-# wildcard entries. $KNOWN_IDS is split unquoted, so unless is_known() turns
-# pathname expansion off the shell swaps "2d84:*" for a matching filename
-# before case ever sees it — and cupsd only chdirs to / when it daemonizes,
-# so a hand-run cupsd -f leaves the backend in that shell's directory. With
-# the decoys in place the wildcard checks below go red if that guard is ever
-# dropped.
+# wildcard entries: $KNOWN_IDS is split unquoted, so without the guard in
+# is_known() the shell swaps "2d84:*" for a matching filename before case
+# ever sees it (the comment there says when the backend's CWD is not /).
+# With the decoys in place the wildcard checks below go red if that guard is
+# ever dropped.
 scratch=$(mktemp -d)
 trap 'cd / && rm -rf "$scratch" || :' EXIT
 : > "$scratch/2d84:zz"
