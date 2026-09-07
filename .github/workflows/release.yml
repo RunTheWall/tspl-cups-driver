@@ -21,10 +21,20 @@ jobs:
         run: |
           if [ "$GITHUB_REF_TYPE" = tag ]; then VER="${GITHUB_REF_NAME#v}"; else VER=0.0.0-dev; fi
           # Build on bullseye (glibc 2.31) so the binaries also run on older
-          # LTS (Ubuntu 20.04/22.04, Debian 11+), not just bookworm/trixie.
+          # LTS (Ubuntu 20.04/22.04, Debian 11+, Raspberry Pi OS bullseye),
+          # not just bookworm/trixie.
+          # Bullseye left LTS in August 2026 and its security pool was retired,
+          # but deb.debian.org still serves the bullseye-security indexes, so
+          # apt resolves versions whose .deb files now 404 (deb11u10 cups,
+          # deb11u5 perl). archive.debian.org carries bullseye main complete
+          # and frozen (libcups2-dev 2.3.3op2-3+deb11u8), so pin apt to it and
+          # drop the security list. Check-Valid-Until off: the archived Release
+          # file is deliberately stale.
           docker run --rm --platform=${{ matrix.platform }} -v "$PWD":/src -w /src \
             -e VER="$VER" -e ARCH="${{ matrix.arch }}" debian:bullseye-slim sh -eux -c '
-              apt-get update
+              rm -f /etc/apt/sources.list.d/*
+              echo "deb http://archive.debian.org/debian bullseye main" > /etc/apt/sources.list
+              apt-get -o Acquire::Check-Valid-Until=false update
               apt-get install -y --no-install-recommends build-essential libcups2-dev dpkg-dev file
               make -s
               file src/rastertotspl
