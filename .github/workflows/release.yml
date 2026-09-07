@@ -23,18 +23,26 @@ jobs:
           # Build on bullseye (glibc 2.31) so the binaries also run on older
           # LTS (Ubuntu 20.04/22.04, Debian 11+, Raspberry Pi OS bullseye),
           # not just bookworm/trixie.
-          # Bullseye left LTS in August 2026 and its security pool was retired,
-          # but deb.debian.org still serves the bullseye-security indexes, so
-          # apt resolves versions whose .deb files now 404 (deb11u10 cups,
-          # deb11u5 perl). archive.debian.org carries bullseye main complete
-          # and frozen (libcups2-dev 2.3.3op2-3+deb11u8), so pin apt to it and
-          # drop the security list. Check-Valid-Until off: the archived Release
-          # file is deliberately stale.
+          # Bullseye left LTS on 31 Aug 2026 and its security pool is being
+          # retired: deb.debian.org still serves the bullseye-security indexes,
+          # so apt resolves versions whose .deb files now 404 (deb11u10 cups,
+          # deb11u5 perl) and the build dies fetching them. archive.debian.org
+          # is not an answer on its own -- it carries bullseye main but no
+          # bullseye-security yet, and main alone is older than the packages
+          # baked into the base image, so apt reports broken packages.
+          # snapshot.debian.org keeps both suites at a fixed date; 1 Sep 2026
+          # is the day after the last bullseye update, so it pins the final
+          # state. Check-Valid-Until off because a snapshot Release file is
+          # deliberately stale.
+          SNAP=20260901T000000Z
           docker run --rm --platform=${{ matrix.platform }} -v "$PWD":/src -w /src \
-            -e VER="$VER" -e ARCH="${{ matrix.arch }}" debian:bullseye-slim sh -eux -c '
+            -e VER="$VER" -e ARCH="${{ matrix.arch }}" -e SNAP="$SNAP" debian:bullseye-slim sh -eux -c '
               rm -f /etc/apt/sources.list.d/*
-              echo "deb http://archive.debian.org/debian bullseye main" > /etc/apt/sources.list
-              apt-get -o Acquire::Check-Valid-Until=false update
+              {
+                echo "deb http://snapshot.debian.org/archive/debian/${SNAP} bullseye main"
+                echo "deb http://snapshot.debian.org/archive/debian-security/${SNAP} bullseye-security main"
+              } > /etc/apt/sources.list
+              apt-get -o Acquire::Check-Valid-Until=false -o Acquire::Retries=3 update
               apt-get install -y --no-install-recommends build-essential libcups2-dev dpkg-dev file
               make -s
               file src/rastertotspl
