@@ -1,4 +1,4 @@
-%{!?ver: %global ver 1.3.4}
+%{!?ver: %global ver 1.3.5}
 # CUPS serverbin path differs per distro — ask cups-config (works on Fedora/RHEL/SUSE).
 %global cups_serverbin %(cups-config --serverbin 2>/dev/null || echo %{_prefix}/lib/cups)
 %global debug_package %{nil}
@@ -56,6 +56,25 @@ Free driver by Run The Wall - support us: https://constly.com
 MSG
 
 %changelog
+* Mon Sep 07 2026 Run The Wall <hello@constly.com> - 1.3.5-1
+- New option GapLength: the gap (die-cut) or black-mark length sent in
+  GAP/BLINE, in tenths of a millimetre, default 30 (3 mm, unchanged).
+  Small die-cut labels are often cut with a 2 mm gap; a mismatch makes
+  the firmware hunt for a boundary that is not where it expects.
+  Community contribution, thanks @owlot.
+- New Media tracking choice "Fixed pitch": for die-cut stock whose gap
+  the sensor cannot hold (short labels, gaps at the 2 mm sensor floor).
+  Sends GAP 0 and puts the full label + gap pitch in SIZE, so the
+  printer feeds blind and stays in register.
+- The default TSPL stream is byte-identical to 1.3.4. Whole-millimetre
+  gaps still go out as "GAP 3 mm,0 mm"; only a fractional GapLength
+  emits a decimal. Continuous queues are unchanged.
+- GapLength under 1 mm on a sensor mode would go out as GAP 0, which the
+  firmware reads as "continuous" and remembers across jobs; that now
+  warns and falls back to 3 mm. Over the TSPL maximum of 25.4 mm clamps.
+- The per-page log line now reports the SIZE height, tracking mode and
+  gap actually sent.
+
 * Wed Sep 02 2026 Run The Wall <hello@constly.com> - 1.3.4-1
 - Auto-detect the 123inkt LW650XL PRO / "QIN LabelPrinter" (2e3c:5757) —
   community contribution, tested on real hardware (thanks @owlot). 300 dpi
