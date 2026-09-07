@@ -23,8 +23,13 @@
  *  CUPS options honoured (same as the vendor PPD, plus MediaTracking):
  *     Darkness   (0..15)            -> DENSITY
  *     PrintSpeed (10..60 = ips x10) -> SPEED (in/sec); 0 = omit (printer default)
- *     MediaTracking Gap / BlackMark / Continuous / PrinterDefault
- *                                   -> GAP 3 mm / BLINE 3 mm / GAP 0 / (omitted)
+ *     MediaTracking Gap / BlackMark / Continuous / FixedPitch / PrinterDefault
+ *                                   -> GAP <g> mm / BLINE <g> mm / GAP 0 / GAP 0 / (omitted)
+ *     GapLength (tenths of mm, 30 = 3 mm; a bare 1..9 or "2.5" is read as mm)
+ *                -> <g>, the gap / black-mark length; default 3 mm.
+ *                FixedPitch: nothing but SIZE stops the feed, so GapLength is
+ *                added to SIZE's height and the printer feeds label + gap per
+ *                label (die-cut stock whose gap the sensor cannot hold).
  *     Horizontal,Vertical (dots)    -> REFERENCE
  *     PrintMode  0 None / 2 Diffusion / 3 Gathering / 4 ErrorDiffusion / 5 Default
  *                -> halftone used to flatten 8bpp grey into 1bpp dots.
@@ -75,6 +80,29 @@ static const int CLUSTER8[8][8] = {
  * the PPD's marked default (which reflects the queue default set via
  * `lpadmin -p QUEUE -o Name=Value`); otherwise the built-in fallback. This is
  * what lets two queues sharing this filter have different defaults. */
+/* Raw option text: the job option first, else the queue PPD's marked choice
+ * (valid only until ppdClose). */
+static const char *opt_str(ppd_file_t *ppd, int num_options, cups_option_t *options,
+                           const char *kw)
+{
+    const char *v = cupsGetOption(kw, num_options, options);
+    if (v) return v;
+    ppd_choice_t *c;
+    if (ppd && (c = ppdFindMarkedChoice(ppd, kw)) != NULL) return c->choice;
+    return NULL;
+}
+
+/* Tenths of mm -> "3" or "2.5". Whole millimetres keep the integer form the
+ * stream has always used (the default bytes stay identical); fractions are in
+ * the TSC spec ("GAP 7.62 mm,2.54 mm" is a manual example) and are built from
+ * ints so no locale can turn the point into a comma. */
+static const char *fmt_mm(char *buf, size_t n, int tenths)
+{
+    if (tenths % 10) snprintf(buf, n, "%d.%d", tenths / 10, tenths % 10);
+    else             snprintf(buf, n, "%d", tenths / 10);
+    return buf;
+}
+
 static int opt_int(ppd_file_t *ppd, int num_options, cups_option_t *options,
                    const char *kw, int dflt)
 {
@@ -110,25 +138,61 @@ int main(int argc, char *argv[])
     int href      = opt_int(ppd, num_options, options, "Horizontal", 0);
     int vref      = opt_int(ppd, num_options, options, "Vertical",   0);
 
-    /* MediaTracking -> the boundary command. GAP/BLINE select the sensor;
-     * sending GAP to continuous or black-mark stock makes the firmware hunt
-     * for a gap that never comes (feeds a label + margin, then errors), so an
-     * unrecognized value must not silently fall through without a warning.
-     * Resolved to a static string here because ppdClose frees the choice. */
-    const char *track = "GAP 3 mm,0 mm\r\n";              /* Gap (die-cut) */
+    /* MediaTracking -> how the printer finds the next label. GAP/BLINE select
+     * the sensor; sending GAP to continuous or black-mark stock makes the
+     * firmware hunt for a gap that never comes (feeds a label + margin, then
+     * errors), so an unrecognized value must not silently fall through
+     * without a warning. FixedPitch is the escape hatch for die-cut stock
+     * whose gap the sensor cannot hold (short labels, gaps at the 2 mm sensor
+     * floor): GAP 0 like Continuous, but SIZE carries the full label + gap
+     * pitch so the blind feed stays in register.
+     * Resolved to an enum here because ppdClose frees the choice. */
+    enum { TRK_GAP, TRK_BLINE, TRK_CONTINUOUS, TRK_FIXEDPITCH, TRK_PRINTER } track = TRK_GAP;
     {
-        const char *v = cupsGetOption("MediaTracking", num_options, options);
-        ppd_choice_t *c;
-        if (!v && ppd && (c = ppdFindMarkedChoice(ppd, "MediaTracking")) != NULL)
-            v = c->choice;
+        const char *v = opt_str(ppd, num_options, options, "MediaTracking");
         if (v && *v) {
-            if      (!strcasecmp(v, "BlackMark"))      track = "BLINE 3 mm,0 mm\r\n";
-            else if (!strcasecmp(v, "Continuous"))     track = "GAP 0 mm,0 mm\r\n";
-            else if (!strcasecmp(v, "PrinterDefault")) track = ""; /* stored setting */
+            if      (!strcasecmp(v, "BlackMark"))      track = TRK_BLINE;
+            else if (!strcasecmp(v, "Continuous"))     track = TRK_CONTINUOUS;
+            else if (!strcasecmp(v, "FixedPitch"))     track = TRK_FIXEDPITCH;
+            else if (!strcasecmp(v, "PrinterDefault")) track = TRK_PRINTER; /* stored setting */
             else if (strcasecmp(v, "Gap"))
                 fprintf(stderr, "WARNING: unknown MediaTracking '%s' — assuming "
-                        "Gap (die-cut); use Gap, BlackMark, Continuous or "
-                        "PrinterDefault\n", v);
+                        "Gap (die-cut); use Gap, BlackMark, Continuous, "
+                        "FixedPitch or PrinterDefault\n", v);
+        }
+    }
+
+    /* GapLength: the gap / black-mark length in tenths of mm (30 = 3 mm).
+     * 3 mm is the TSC factory default and what every other TSPL driver sends;
+     * small die-cut labels are often cut with 2 mm, TSC's sensor floor. As
+     * with PrintSpeed, a bare 1..9 (or anything with a decimal point) is read
+     * as whole mm so a hand-typed  -o GapLength=2  does the intuitive thing.
+     * Bounds: the spec caps GAP/BLINE at 25.4 mm, and under 1 mm on a sensor
+     * mode would go out as GAP 0 -- which the firmware takes as "continuous",
+     * switches the sensor off, and remembers across jobs. */
+    int gap_tenths = 30;
+    {
+        const char *v = opt_str(ppd, num_options, options, "GapLength");
+        if (v && *v) {
+            char *end;
+            double n = strtod(v, &end);
+            if (end == v || n < 0) {
+                fprintf(stderr, "WARNING: GapLength '%s' is not a length — using 3 mm\n", v);
+            } else {
+                if (strchr(v, '.') || n < 10) n *= 10;          /* millimetres -> tenths */
+                gap_tenths = (int)lround(n);
+                if (gap_tenths > 254) {
+                    fprintf(stderr, "WARNING: GapLength %s is over the TSPL maximum of "
+                            "25.4 mm — clamped\n", v);
+                    gap_tenths = 254;
+                }
+                if (gap_tenths < 10 && (track == TRK_GAP || track == TRK_BLINE)) {
+                    fprintf(stderr, "WARNING: GapLength %s is under 1 mm, which would switch "
+                            "the %s sensor off (GAP 0 = continuous) — using 3 mm\n",
+                            v, track == TRK_GAP ? "gap" : "black-mark");
+                    gap_tenths = 30;
+                }
+            }
         }
     }
     if (ppd) ppdClose(ppd);
@@ -257,8 +321,24 @@ int main(int argc, char *argv[])
          * CRLF is the cheapest way back to command mode (pdf2tspl et al). */
         int wmm = (int)lround((double)W * 25.4 / resx);
         int hmm = (int)lround((double)H * 25.4 / resy);
-        printf("\r\nSIZE %d mm,%d mm\r\n", wmm, hmm);
-        fputs(track, stdout);
+        char sizeh[16], gapstr[16];
+        if (track == TRK_FIXEDPITCH) {
+            /* Nothing but SIZE stops the feed, so it must be the true pitch:
+             * label height plus the physical gap, summed in tenths and rounded
+             * once, because on a blind feed every rounding error accumulates
+             * label after label. A decimal SIZE is spec (and what the TSC and
+             * Munbyn vendor filters emit). */
+            fmt_mm(sizeh, sizeof sizeh, (int)lround((double)H * 254.0 / resy) + gap_tenths);
+        } else
+            snprintf(sizeh, sizeof sizeh, "%d", hmm);
+        printf("\r\nSIZE %d mm,%s mm\r\n", wmm, sizeh);
+        switch (track) {
+        case TRK_GAP:        printf("GAP %s mm,0 mm\r\n",   fmt_mm(gapstr, sizeof gapstr, gap_tenths)); break;
+        case TRK_BLINE:      printf("BLINE %s mm,0 mm\r\n", fmt_mm(gapstr, sizeof gapstr, gap_tenths)); break;
+        case TRK_CONTINUOUS:
+        case TRK_FIXEDPITCH: fputs("GAP 0 mm,0 mm\r\n", stdout); break;
+        case TRK_PRINTER:    break;                                   /* stored setting */
+        }
         printf("DENSITY %d\r\n", darkness);
         if (speed_ips >= 1)
             printf("SPEED %d\r\n", speed_ips);
@@ -270,8 +350,12 @@ int main(int argc, char *argv[])
         fflush(stdout);
         free(bm);
 
-        fprintf(stderr, "INFO: TSPL page %d: %ux%u dots (%dx%dmm) mode=%d density=%d speed=%d copies=%u\n",
-                page, W, H, wmm, hmm, printmode, darkness, speed_ips, copies);
+        static const char *const trkname[] =
+            { "Gap", "BlackMark", "Continuous", "FixedPitch", "PrinterDefault" };
+        fprintf(stderr, "INFO: TSPL page %d: %ux%u dots (SIZE %dx%smm) tracking=%s gap=%smm "
+                "mode=%d density=%d speed=%d copies=%u\n",
+                page, W, H, wmm, sizeh, trkname[track], fmt_mm(gapstr, sizeof gapstr, gap_tenths),
+                printmode, darkness, speed_ips, copies);
     }
 
     cupsRasterClose(ras);

@@ -16,7 +16,7 @@ fail() { echo "FAIL: $*" 1>&2; exit 1; }
 make -s src/rastertotspl tests/mkras
 
 OUT="${TMPDIR:-/tmp}/tspl-smoke.$$"
-trap 'rm -f "$OUT" "$OUT.ras" "$OUT.txt" "$OUT.hex"' EXIT
+trap 'rm -f "$OUT" "$OUT.ras" "$OUT.txt" "$OUT.hex" "$OUT.err"' EXIT
 
 tests/mkras > "$OUT.ras"
 src/rastertotspl 1 tester smoke 3 '' < "$OUT.ras" > "$OUT" 2>/dev/null
@@ -51,16 +51,52 @@ grep -q '^PRINT 1,4$' "$OUT.txt" || fail "page 2 should print 4 device copies"
 grep -q '^PRINT 1,3$' "$OUT.txt" && fail "argv[4] copies leaked into PRINT"
 
 # --- option handling: BlackMark -> BLINE (no GAP), PrintSpeed=0 -> no SPEED ---
-src/rastertotspl 1 tester smoke 1 'MediaTracking=BlackMark PrintSpeed=0' \
-    < "$OUT.ras" 2>/dev/null | tr -d '\r' > "$OUT.txt"
-grep -q  '^BLINE 3 mm,0 mm' "$OUT.txt" || fail "BlackMark should emit BLINE"
+opt() { src/rastertotspl 1 tester smoke 1 "$1" < "$OUT.ras" 2>"$OUT.err" | tr -d '\r' > "$OUT.txt"; }
+opt 'MediaTracking=BlackMark PrintSpeed=0'
+grep -qx 'BLINE 3 mm,0 mm' "$OUT.txt" || fail "BlackMark should emit BLINE 3 mm"
 grep -q  '^GAP'   "$OUT.txt" && fail "BlackMark must not also emit GAP"
 grep -q  '^SPEED' "$OUT.txt" && fail "PrintSpeed=0 must omit SPEED"
 
-# --- continuous media -> GAP 0; out-of-range speed clamps to 6 ips ---
-src/rastertotspl 1 tester smoke 1 'MediaTracking=Continuous PrintSpeed=9' \
-    < "$OUT.ras" 2>/dev/null | tr -d '\r' > "$OUT.txt"
-grep -q '^GAP 0 mm,0 mm' "$OUT.txt" || fail "Continuous should emit GAP 0"
-grep -q '^SPEED 6$' "$OUT.txt" || fail "PrintSpeed=9 should clamp to SPEED 6"
+# --- continuous roll -> GAP 0 and SIZE stays the page height (nothing to add:
+#     the page IS the feed length); out-of-range speed clamps to 6 ips ---
+opt 'MediaTracking=Continuous PrintSpeed=9'
+grep -qx 'GAP 0 mm,0 mm'  "$OUT.txt" || fail "Continuous should emit GAP 0"
+grep -qx 'SIZE 1 mm,1 mm' "$OUT.txt" || fail "Continuous must not pad SIZE"
+grep -qx 'SPEED 6'        "$OUT.txt" || fail "PrintSpeed=9 should clamp to SPEED 6"
+
+# --- GapLength (tenths of mm) on the sensor modes: whole millimetres keep the
+#     integer form, fractions are spec ("GAP 7.62 mm,2.54 mm" is a manual
+#     example); a bare 1..9 or a decimal is read as mm, like PrintSpeed's ips ---
+opt 'GapLength=20';  grep -qx 'GAP 2 mm,0 mm'   "$OUT.txt" || fail "GapLength=20 -> GAP 2 mm"
+opt 'GapLength=2';   grep -qx 'GAP 2 mm,0 mm'   "$OUT.txt" || fail "bare GapLength=2 -> GAP 2 mm"
+opt 'GapLength=2.5'; grep -qx 'GAP 2.5 mm,0 mm' "$OUT.txt" || fail "GapLength=2.5 -> GAP 2.5 mm"
+opt 'MediaTracking=BlackMark GapLength=15'
+grep -qx 'BLINE 1.5 mm,0 mm' "$OUT.txt" || fail "GapLength=15 -> BLINE 1.5 mm"
+opt 'MediaTracking=PrinterDefault GapLength=20'
+grep -qE '^(GAP|BLINE)' "$OUT.txt" && fail "PrinterDefault must send no boundary command"
+
+# --- GapLength guards: under 1 mm or unparsable on a sensor mode would go out
+#     as GAP 0 = continuous, switching the sensor off and persisting in the
+#     printer -> warn and fall back to 3 mm; the spec caps GAP at 25.4 mm ---
+for bad in 'GapLength=0' 'GapLength=abc' 'GapLength=-5' 'MediaTracking=BlackMark GapLength=0'; do
+    opt "$bad"
+    grep -qE '^(GAP|BLINE) 3 mm,0 mm$' "$OUT.txt" || fail "$bad should fall back to 3 mm"
+    grep -q '^WARNING' "$OUT.err" || fail "$bad should warn"
+done
+opt 'GapLength=999'
+grep -qx 'GAP 25.4 mm,0 mm' "$OUT.txt" || fail "GapLength=999 should clamp to 25.4 mm"
+grep -q '^WARNING' "$OUT.err" || fail "GapLength=999 should warn"
+
+# --- FixedPitch: GAP 0 like Continuous, but SIZE is label + gap summed in
+#     tenths and rounded once (8 dots @300 dpi = 0.68 mm -> 0.7; + 3 mm = 3.7;
+#     + 2.5 mm = 3.2; + 0 = 0.7, and 0 is valid here) ---
+opt 'MediaTracking=FixedPitch'
+grep -qx 'GAP 0 mm,0 mm'    "$OUT.txt" || fail "FixedPitch should emit GAP 0"
+grep -qx 'SIZE 1 mm,3.7 mm' "$OUT.txt" || fail "FixedPitch should add the 3 mm default gap to SIZE"
+opt 'MediaTracking=FixedPitch GapLength=25'
+grep -qx 'SIZE 1 mm,3.2 mm' "$OUT.txt" || fail "FixedPitch GapLength=25 -> SIZE 3.2 mm"
+opt 'MediaTracking=FixedPitch GapLength=0'
+grep -qx 'SIZE 1 mm,0.7 mm' "$OUT.txt" || fail "FixedPitch GapLength=0 -> bare label height"
+grep -q '^WARNING' "$OUT.err" && fail "GapLength=0 is valid on FixedPitch"
 
 echo "smoke test OK"

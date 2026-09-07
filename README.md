@@ -182,7 +182,8 @@ The Pi renders, so **clients never install a driver** — they just add the shar
 | **Print Mode** (halftone) | **Default** (threshold — crisp text/barcodes) · **Gathering** (dither — greys/photos) · None · Diffusion · Error Diffusion | — (rendered into the bitmap) |
 | **Darkness** | `0`–`15` (default 8) | `DENSITY` |
 | **Print Speed** | `1`–`6` in/sec (default 4) · Printer default (sends nothing) | `SPEED` |
-| **Media tracking** | **Die-cut (gap)** · Black-mark · Continuous · Printer setting | `GAP` / `BLINE` |
+| **Media tracking** | **Die-cut (gap)** · Black-mark · Continuous · Fixed pitch (die-cut, sensor off) · Printer setting | `GAP` / `BLINE` |
+| **Gap / black-mark length** | `1.5`–`5` mm (default 3 mm) | the length in `GAP`/`BLINE`; on Fixed pitch, added to `SIZE` |
 | **Resolution** | `203` / `300` dpi | — |
 
 Loaded **black-mark or continuous stock** instead of die-cut labels? Set it per queue —
@@ -192,6 +193,25 @@ media makes the printer hunt for a gap and error out. And after any media change
 TSPL firmwares skip or garble labels when `SIZE` disagrees with the stock. Note `PrinterDefault`
 sends no boundary command at all — and GAP/BLINE **persist in printer memory**, so such a queue
 inherits whatever the last job set (e.g. `GAP 0` from a Continuous queue sharing the printer).
+
+**Gap length.** The `3 mm` in `GAP 3 mm,0 mm` is the TSC factory default and what every other TSPL
+driver sends, but small die-cut labels are often cut with a **2 mm** gap, the minimum TSC rates its
+sensors for. If labels lose register, measure the gap and set it: `-o GapLength=20` (tenths of a
+millimetre; a bare `-o GapLength=2` or `-o GapLength=2.5` is read as millimetres). Values under 1 mm
+are refused on the sensor modes: TSPL takes `GAP 0` as "continuous", and the printer remembers it.
+
+**Fixed pitch.** Some clone sensors cannot hold a very short pitch (a 12 mm label with a 2 mm gap, say):
+the first label prints, the next feed faults, whatever `GAP` says. `-o MediaTracking=FixedPitch`
+takes the sensor out of the loop: it sends `GAP 0` like Continuous but puts the full **label + gap**
+pitch in `SIZE` (from `GapLength`), so the printer feeds blind and stays in register. Plain
+**Continuous** is untouched: on a continuous roll the page height *is* the feed length.
+
+Two things come with running blind. The **last label stops short of the tear bar** — positioning to
+tear-off needs the gap sensor, so it sits half out until the next job pushes it through; that is the
+printer, not a lost job. And the pitch is only as good as your measurement: `GapLength` has to match
+the real gap or the image walks a little further along the roll with every label. Measure it, print a
+few, and check the last one still lands where the first did. Set the queue back to **Die-cut (gap)**
+and the printer re-syncs on the next job.
 
 <details>
 <summary><b>Two queues: crisp labels + a "photo" (Gathering) queue</b></summary>
@@ -211,7 +231,10 @@ sudo lpadmin -p HZD950-Photo -E -v tspl://auto -P /usr/share/ppd/tspl/tspl-label
 Baked into the queue default, this works even for driverless clients (AirPrint/IPP-Everywhere) that can't
 show the option menus — they just pick the right queue. Values: **PrintMode** `5`=Default `3`=Gathering
 `0`=None `2`=Diffusion `4`=ErrorDiffusion · **Darkness** `0`–`15` · **PrintSpeed** = in/sec ×10
-(`0` = leave it to the printer) · **MediaTracking** `Gap`/`BlackMark`/`Continuous`/`PrinterDefault`.
+(`0` = leave it to the printer) · **MediaTracking** `Gap`/`BlackMark`/`Continuous`/`FixedPitch`/`PrinterDefault`
+· **GapLength** = mm ×10 (`20` = 2 mm). `lpadmin -o GapLength=` only keeps values the PPD lists
+(`15 20 25 30 40 50`); for any other value use `-o GapLength-default=17`, which CUPS then applies to
+every job on the queue.
 </details>
 
 <details>
