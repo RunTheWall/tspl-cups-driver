@@ -104,28 +104,34 @@
 *% BLINE (black-mark stock), GAP 0 (continuous roll), or send neither and use
 *% the printer's stored setting. Sending GAP to continuous/black-mark stock
 *% makes the firmware hunt for a gap that never comes and error out.
+*% FixedPitch is for die-cut stock whose gap the sensor cannot hold (short
+*% labels, 2 mm gaps): GAP 0 like Continuous, but SIZE carries the full
+*% label + GapLength pitch so the blind feed stays in register.
 *DefaultMediaTracking: Gap
 *MediaTracking Gap/Die-cut labels (gap sensor): ""
 *MediaTracking BlackMark/Black-mark stock: ""
 *MediaTracking Continuous/Continuous roll: ""
+*MediaTracking FixedPitch/Die-cut labels, sensor off (feed label + gap): ""
 *MediaTracking PrinterDefault/Use printer setting: ""
 *CloseUI: *MediaTracking
 
-*OpenUI *GapLength/Gap/Black-mark length (mm): PickOne
+*OpenUI *GapLength/Gap or black-mark length: PickOne
 *OrderDependency: 46 AnySetup *GapLength
-*% Physical length of the gap (die-cut) or black mark on the label stock, sent
-*% as the second SIZE-boundary argument (GAP <n> mm / BLINE <n> mm). Wrong
-*% value = firmware overshoots hunting for the next boundary and wastes
-*% labels. Measure your stock; 3mm is a common default but many small
-*% die-cut labels use ~1.5-2mm. Ignored when Media tracking is Continuous
-*% or Use printer setting.
+*% Physical length of the gap between die-cut labels, or the height of the
+*% black mark, in tenths of a millimetre (30 = 3 mm: the TSC factory default
+*% and what every TSPL driver sends). Goes out as the first argument of
+*% GAP / BLINE; the second (sensor offset) is always 0. Many small die-cut
+*% labels are cut with a 2 mm gap, TSC's stated sensor minimum; measure yours
+*% if labels lose register. On FixedPitch queues the value is added to SIZE
+*% instead, so the printer feeds label + gap per label with the sensor off.
+*% Ignored for Continuous and Use printer setting.
 *DefaultGapLength: 30
 *GapLength 15/1.5 mm: ""
-*GapLength 20/2.0 mm: ""
+*GapLength 20/2 mm: ""
 *GapLength 25/2.5 mm: ""
-*GapLength 30/3.0 mm (default): ""
-*GapLength 40/4.0 mm: ""
-*GapLength 50/5.0 mm: ""
+*GapLength 30/3 mm (default): ""
+*GapLength 40/4 mm: ""
+*GapLength 50/5 mm: ""
 *CloseUI: *GapLength
 
 *OpenUI *Darkness/Darkness: PickOne
