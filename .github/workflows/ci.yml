@@ -26,6 +26,6 @@ jobs:
       - name: Known ids mirrored in the udev rules and README
         run: sh tests/ids.sh
       - name: Scripts parse
-        run: for f in backend/tspl tests/*.sh install.sh packaging/deb/build.sh packaging/deb/postinst; do sh -n "$f"; done
+        run: for f in backend/tspl tests/*.sh install.sh packaging/deb/build.sh packaging/deb/postinst packaging/aur/refresh.sh; do sh -n "$f"; done
       - name: Shellcheck
-        run: shellcheck -s sh backend/tspl tests/*.sh install.sh packaging/deb/build.sh packaging/deb/postinst
+        run: shellcheck -s sh backend/tspl tests/*.sh install.sh packaging/deb/build.sh packaging/deb/postinst packaging/aur/refresh.sh

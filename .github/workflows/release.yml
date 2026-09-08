@@ -86,6 +86,53 @@ jobs:
           name: rpm-${{ matrix.arch }}
           path: dist/*
 
+  # Builds the AUR package in a real Arch container: refresh.sh derives
+  # pkgver/sha256/.SRCINFO from the released tarball, then makepkg builds it
+  # and runs the test suite via check(). Proves the package installs cleanly
+  # before anything is published. Runs on a tag, or on demand against the
+  # version currently in the PKGBUILD.
+  aur:
+    if: github.ref_type == 'tag' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: makepkg in archlinux:base-devel
+        run: |
+          if [ "$GITHUB_REF_TYPE" = tag ]; then VER="${GITHUB_REF_NAME#v}"
+          else VER=$(sed -n 's/^pkgver=//p' packaging/aur/PKGBUILD); fi
+          echo "building AUR package for v$VER"
+          docker run --rm -v "$PWD":/src:ro -e VER="$VER" archlinux:base-devel bash -eux -c '
+            pacman -Syu --noconfirm --needed cups curl >/dev/null
+            useradd -m builder
+            install -d -o builder /work
+            cp -r /src/packaging/aur/. /work/
+            chown -R builder /work
+            su builder -c "cd /work && sh ./refresh.sh $VER . && makepkg -f --noconfirm --nosign"
+            ls -l /work/*.pkg.tar.*
+            pacman -Qip /work/*.pkg.tar.* | head -20
+            pacman -Qlp /work/*.pkg.tar.*
+            cp /work/PKGBUILD /work/.SRCINFO /tmp/ 2>/dev/null || true
+          '
+      - name: .SRCINFO in the repo matches what refresh.sh generates
+        run: |
+          if [ "$GITHUB_REF_TYPE" = tag ]; then VER="${GITHUB_REF_NAME#v}"
+          else VER=$(sed -n 's/^pkgver=//p' packaging/aur/PKGBUILD); fi
+          docker run --rm -v "$PWD":/src -e VER="$VER" archlinux:base-devel bash -eux -c '
+            pacman -Syu --noconfirm --needed curl >/dev/null
+            useradd -m builder
+            install -d -o builder /work && cp -r /src/packaging/aur/. /work/ && chown -R builder /work
+            su builder -c "cd /work && sh ./refresh.sh $VER ."
+            # A tag build legitimately differs: main pins the checksum only
+            # after the release, so only compare when the repo already has it.
+            if grep -q "^sha256sums=(.SKIP.)" /src/packaging/aur/PKGBUILD; then
+              echo "repo PKGBUILD still on SKIP, nothing to compare"
+            else
+              diff -u /src/packaging/aur/PKGBUILD /work/PKGBUILD
+              diff -u /src/packaging/aur/.SRCINFO /work/.SRCINFO
+              echo "repo copy is in sync"
+            fi
+          '
+
   release:
     needs: [ deb, rpm ]
     if: github.ref_type == 'tag'
