@@ -113,9 +113,67 @@ check() {  # check <shell> <stub> <want> <expected node>
     fi
 }
 
+# usb_attr alone: the stale-file checks must drive the REAL each_node, so only
+# the sysfs reader is stubbed there.
+stub_hzd_attr() {
+    cat <<'STUB'
+usb_attr() {
+    case "$1:$2" in
+        0:idVendor) echo 0fe6 ;; 0:idProduct) echo 811e ;; 0:serial) echo HERO-01 ;;
+    esac
+}
+STUB
+}
+
+report() {  # report <label> <got> <expected>
+    if [ "$2" = "$3" ]; then
+        printf '  ok    %-14s -> %s\n' "$1" "$2"
+    else
+        printf '  FAIL  %-14s -> %s (expected %s)\n' "$1" "$2" "$3"
+        fails=$((fails + 1))
+    fi
+}
+
+# A stale REGULAR file where a node belongs is the one input that used to be
+# accepted as a printer: the job went into the file, the redirect succeeded, and
+# CUPS reported a successful print. These run the real each_node/stale_nodes
+# over a scratch devdir, since that is where the bug lived.
+node_checks() {  # $1 = shell
+    sh_=$1
+    dev=$scratch/dev
+    mkdir -p "$dev"
+    rm -f "$dev"/lp*
+    : > "$dev/lp0"                  # exactly what a write to a vanished node leaves
+    stub_devdir="devdir() { echo '$dev'; }"
+
+    got=$({ code; echo "$stub_devdir"; echo each_node; } | "$sh_" 2>/dev/null) || got=""
+    report "stale file" "${got:-<none>}" "<none>"
+
+    # ...and prove the scan actually reached that directory. Without this, the
+    # check above passes just as well when the glob points somewhere that does
+    # not exist - which is every CI runner, none of which have a /dev/usb.
+    got=$({ code; echo "$stub_devdir"; echo stale_nodes; } | "$sh_" 2>/dev/null) || got=""
+    report "stale seen" "${got:-<none>}" "$dev/lp0"
+
+    # auto must not resolve to it, even though sysfs hands back a known vid:pid
+    # for the minor parsed out of its name
+    got=$({ code; echo "$stub_devdir"; stub_hzd_attr; echo 'find_node auto'; } \
+            | "$sh_" 2>/dev/null) || got=""
+    report "stale+auto" "${got:-<none>}" "<none>"
+
+    # the /dev/ pin branch is gated too. /dev/fd exists everywhere this runs and
+    # is not a character device; without the gate it pins successfully.
+    got=$({ code; echo 'find_node /dev/null'; } | "$sh_" 2>/dev/null) || got=""
+    report "pin char" "${got:-<none>}" "/dev/null"
+    got=$({ code; echo 'find_node /dev/fd'; } | "$sh_" 2>/dev/null) || got=""
+    report "pin non-char" "${got:-<none>}" "<none>"
+}
+
 for shell in sh dash bash ksh; do
     command -v "$shell" >/dev/null 2>&1 || { echo "-- $shell: not installed, skipped"; continue; }
     echo "-- $shell"
+
+    node_checks "$shell"
 
     # auto picks the first known TSPL printer, in any case, and never the laser
     check "$shell" stub_mixed auto         /dev/usb/lp0

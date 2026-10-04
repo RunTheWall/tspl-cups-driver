@@ -277,6 +277,50 @@ v1.3.1, so all pages print. If you still see missing pages *here*, that's a bug 
 [report it](https://github.com/RunTheWall/tspl-cups-driver/issues/new?template=bug.yml) with your model.
 </details>
 
+<details>
+<summary><b>CUPS says the job printed, but nothing came out</b></summary>
+
+If the printer drops off USB mid-job, its `/dev/usb/lpN` node disappears — and the next write
+to that path **creates an ordinary file there**. From then on jobs are written into the file,
+the write succeeds, and CUPS reports every one of them as printed.
+
+Check whether the node is still a device:
+
+```sh
+stat -c '%n %F' /dev/usb/lp*     # each must say "character special file"
+```
+
+Anything else — `regular file`, or `regular empty file` if nothing reached it yet — is the
+fault. Move it aside, then make the kernel recreate the node:
+
+```sh
+# the guard matters: without it a misdiagnosis moves a HEALTHY node off /dev
+[ ! -c /dev/usb/lp0 ] && sudo mv /dev/usb/lp0 /var/tmp/lp0-stale.bin
+
+# simplest: unplug the printer's USB cable and plug it back in. Otherwise rebind
+# the interface. Its address is the first field of
+#   dmesg | grep usblp   ->  usblp 1-1.3:1.0: usblp0: USB Bidirectional printer ...
+# or  basename "$(readlink -f /sys/class/usbmisc/lp0/device)"  — sysfs survives
+# the node being moved aside. Then:
+echo 1-1.3:1.0 | sudo tee /sys/bus/usb/drivers/usblp/unbind
+echo 1-1.3:1.0 | sudo tee /sys/bus/usb/drivers/usblp/bind
+```
+
+`udevadm trigger --action=add --subsystem-match=usbmisc` is the usual suggestion and is
+usually not enough on its own: on devtmpfs the kernel creates the devnode during device
+registration, and a synthetic uevent does not re-run that — it restores the symlinks but
+not the node. Replug or rebind.
+
+The backend refuses to write anywhere but a character device, and names a stale file in its
+error output instead of silently absorbing the job. It cannot rule the fault out entirely:
+the check and the write are separate syscalls, so a printer that vanishes in that window
+still leaves one file behind — but that job is reported failed, the file is cleared, and
+the next one is not swallowed.
+
+The drop-off itself is usually power or cabling — check `dmesg` for repeated
+`usb N-N: USB disconnect` lines around the time printing stopped.
+</details>
+
 ## Something not working? Tell us 🖨️
 
 It's free, but we do want it to actually work for you — and **your report is how the

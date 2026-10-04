@@ -91,8 +91,44 @@ is_known() {   # $1 = "vid:pid"
         exit 1
     )
 }
+# Where usblp nodes live. A function, not a variable, so that tests/backend.sh
+# can point the scan at a scratch directory by overriding it the same way it
+# overrides usb_attr - and so nothing in the environment can redirect it.
+devdir() { echo /dev/usb; }
+
+is_node() {    # $1 = path -> true only for a character device
+    # -c, never -e. If the printer drops off the bus mid-job, its node
+    # disappears, and the next write to that path CREATES A REGULAR FILE there.
+    # An existence test then accepts the file forever after: the minor is taken
+    # from the NAME, so sysfs still reports char 180:0's vid:pid once the
+    # printer re-enumerates, is_known() matches, and the job is written into the
+    # file. The redirect succeeds, the backend exits 0, and CUPS reports a
+    # printed job that never reached the printer. Observed on an HZD950-PRO that
+    # re-enumerated three times in an hour: five jobs silently filed into
+    # /dev/usb/lp0 as a 270 KB regular file.
+    #
+    # Taking the minor from the name rather than the inode is left as is on
+    # purpose: with -c in place the two can only disagree if something creates a
+    # character device under a misleading name in this directory, and udev owns
+    # it. Reading /sys/class/usbmisc/<name>/dev would close even that.
+    [ -c "$1" ]
+}
+
 each_node() {  # -> "minor node" per usblp device
-    for n in /dev/usb/lp*; do [ -e "$n" ] || continue; echo "${n##*lp} $n"; done
+    d=$(devdir)
+    for n in "$d"/lp*; do
+        if is_node "$n"; then echo "${n##*lp} $n"; fi
+    done
+}
+
+stale_nodes() {  # -> paths that look like nodes but are not character devices
+    # Reported only when resolution has already failed. Warning from inside
+    # each_node() instead would fire on every call, and the boot-settling loop
+    # below calls it once per two-second iteration.
+    d=$(devdir)
+    for n in "$d"/lp*; do
+        if [ -e "$n" ] && ! is_node "$n"; then echo "$n"; fi
+    done
 }
 
 # Resolve target node. $1 = auto | serial | vid-pid | /dev/... . Echoes a node.
@@ -100,7 +136,7 @@ each_node() {  # -> "minor node" per usblp device
 # an unrelated printer such as a laser. Pin unknown units by vid-pid or node.
 find_node() {
     want=$1
-    case "$want" in /dev/*) [ -e "$want" ] && echo "$want"; return ;; esac
+    case "$want" in /dev/*) is_node "$want" && echo "$want"; return ;; esac
     # Accept a USB id as vid-pid or vid:pid, in either case: sysfs reports
     # lowercase hex, and the dash spelling is the one CUPS lets through (see
     # the Device URI note in the header). A serial is compared as typed, so a
@@ -147,6 +183,12 @@ if [ -z "$DEV" ]; then
     each_node | while read -r m n; do
         echo "ERROR:   $n  (usb $(vidpid "$m"), serial $(usb_attr "$m" serial))" 1>&2
     done
+    stale=$(stale_nodes)
+    if [ -n "$stale" ]; then
+        echo "ERROR: stale files sit where device nodes belong. The printer dropped" 1>&2
+        echo "ERROR: off USB and a write created these; remove them and replug it:" 1>&2
+        echo "$stale" | while read -r f; do echo "ERROR:   $f" 1>&2; done
+    fi
     echo "ERROR: pin one with tspl://<vid>-<pid> (dash, e.g. tspl://2d37-83d7)," 1>&2
     echo "ERROR: tspl://<usb-serial>, or tspl:///dev/usb/lpN" 1>&2
     exit 1
@@ -162,5 +204,23 @@ echo "INFO: using TSPL printer at $DEV (usb $(vidpid "${DEV##*lp}"))" 1>&2
 TMP=$(mktemp "${TMPDIR:-/tmp}/tspl-job.XXXXXX") || exit 1
 trap 'rm -f "$TMP"' EXIT
 if [ -n "$6" ]; then cat "$6" > "$TMP"; else cat > "$TMP"; fi
-cat "$TMP" > "$DEV"
-exit $?
+# Last line of defence: never write a job anywhere but a character device.
+# Without this a stale regular file silently absorbs the job and reports success.
+if ! is_node "$DEV"; then
+    echo "ERROR: $DEV is not a character device - refusing to write." 1>&2
+    echo "ERROR: remove the stale file and replug the printer, or pin the node." 1>&2
+    exit 1
+fi
+cat "$TMP" > "$DEV" || exit $?
+# The guard above and this redirect are two separate syscalls, and POSIX sh
+# cannot open a file without O_CREAT. If the printer disappears in between, ">"
+# creates a regular file, cat succeeds, and we would again report a print that
+# never happened. Unpreventable, but detectable: re-check, and clear the file we
+# just created so the next job is not resolved onto it.
+if ! is_node "$DEV"; then
+    echo "ERROR: $DEV stopped being a character device mid-write - the printer" 1>&2
+    echo "ERROR: dropped off USB. This job was NOT printed." 1>&2
+    [ -f "$DEV" ] && rm -f "$DEV"
+    exit 1
+fi
+exit 0
