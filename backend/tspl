@@ -106,6 +106,11 @@ is_node() {    # $1 = path -> true only for a character device
     # printed job that never reached the printer. Observed on an HZD950-PRO that
     # re-enumerated three times in an hour: five jobs silently filed into
     # /dev/usb/lp0 as a 270 KB regular file.
+    #
+    # Taking the minor from the name rather than the inode is left as is on
+    # purpose: with -c in place the two can only disagree if something creates a
+    # character device under a misleading name in this directory, and udev owns
+    # it. Reading /sys/class/usbmisc/<name>/dev would close even that.
     [ -c "$1" ]
 }
 
