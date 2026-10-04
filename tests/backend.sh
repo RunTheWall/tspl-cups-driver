@@ -113,9 +113,60 @@ check() {  # check <shell> <stub> <want> <expected node>
     fi
 }
 
+# A stale REGULAR file where a node belongs is the one input that used to be
+# accepted as a printer: the job went into the file, the redirect succeeded and
+# CUPS reported a successful print. These drive the real each_node/is_node over
+# a scratch TSPL_DEVDIR rather than a stub, since that is where the bug lived.
+node_checks() {  # $1 = shell
+    sh_=$1
+    dev=$scratch/dev; rm -rf "$dev"; mkdir -p "$dev"
+    : > "$dev/lp0"                       # exactly what a write to a vanished node leaves
+
+    got=$({ code; echo 'TSPL_DEVDIR=$1; each_node'; } | "$sh_" -s "$dev" 2>/dev/null) || got=""
+    if [ -z "$got" ]; then
+        printf '  ok    %-14s -> %s\n' "stale file" "<none>"
+    else
+        printf '  FAIL  %-14s -> %s (expected <none>)\n' "stale file" "$got"
+        fails=$((fails + 1))
+    fi
+
+    # ...and auto must not resolve to it, even though sysfs would hand back a
+    # known vid:pid for the minor parsed out of the name.
+    got=$({ code; stub_mixed_attr; echo 'TSPL_DEVDIR=$1; find_node auto'; } \
+            | "$sh_" -s "$dev" 2>/dev/null) || got=""
+    if [ -z "$got" ]; then
+        printf '  ok    %-14s -> %s\n' "stale+auto" "<none>"
+    else
+        printf '  FAIL  %-14s -> %s (expected <none>)\n' "stale+auto" "$got"
+        fails=$((fails + 1))
+    fi
+
+    # a real character device is still accepted; /dev/null is one everywhere
+    got=$({ code; echo 'is_node /dev/null && echo yes'; } | "$sh_" -s 2>/dev/null) || got=""
+    if [ "$got" = "yes" ]; then
+        printf '  ok    %-14s -> %s\n' "char device" "accepted"
+    else
+        printf '  FAIL  %-14s -> %s (expected accepted)\n' "char device" "${got:-rejected}"
+        fails=$((fails + 1))
+    fi
+}
+
+# usb_attr alone, for the stale-file case: each_node must stay real there.
+stub_mixed_attr() {
+    cat <<'STUB'
+usb_attr() {
+    case "$1:$2" in
+        0:idVendor) echo 0fe6 ;; 0:idProduct) echo 811e ;; 0:serial) echo HERO-01 ;;
+    esac
+}
+STUB
+}
+
 for shell in sh dash bash ksh; do
     command -v "$shell" >/dev/null 2>&1 || { echo "-- $shell: not installed, skipped"; continue; }
     echo "-- $shell"
+
+    node_checks "$shell"
 
     # auto picks the first known TSPL printer, in any case, and never the laser
     check "$shell" stub_mixed auto         /dev/usb/lp0

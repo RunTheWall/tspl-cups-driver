@@ -277,6 +277,35 @@ v1.3.1, so all pages print. If you still see missing pages *here*, that's a bug 
 [report it](https://github.com/RunTheWall/tspl-cups-driver/issues/new?template=bug.yml) with your model.
 </details>
 
+<details>
+<summary><b>CUPS says the job printed, but nothing came out</b></summary>
+
+If the printer drops off USB mid-job, its `/dev/usb/lpN` node disappears — and the next write
+to that path **creates an ordinary file there**. From then on jobs are written into the file,
+the write succeeds, and CUPS reports every one of them as printed.
+
+Check whether the node is still a device:
+
+```sh
+stat -c '%n %F' /dev/usb/lp*     # must say "character special file"
+```
+
+If one says `regular file`, that's it. Move it aside and let the kernel recreate the node:
+
+```sh
+sudo mv /dev/usb/lp0 /var/tmp/lp0-stale.bin   # keeps the swallowed job, if you want it
+sudo udevadm trigger --action=add --subsystem-match=usbmisc
+# if the node still isn't back, rebind the interface (use your own, from `dmesg | grep usblp`)
+echo 1-1.3:1.0 | sudo tee /sys/bus/usb/drivers/usblp/unbind
+echo 1-1.3:1.0 | sudo tee /sys/bus/usb/drivers/usblp/bind
+```
+
+Since v1.3.6 the backend refuses to write anywhere but a character device and warns about a
+stale file instead of silently absorbing the job, so this can only bite on older versions.
+The underlying drop-off is usually power or cabling — check `dmesg` for repeated
+`usb N-N: USB disconnect` lines around the time printing stopped.
+</details>
+
 ## Something not working? Tell us 🖨️
 
 It's free, but we do want it to actually work for you — and **your report is how the
