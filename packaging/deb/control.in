@@ -10,9 +10,9 @@ Section: utils
 Priority: optional
 Homepage: https://github.com/RunTheWall/tspl-cups-driver
 Description: Free CUPS driver for TSPL/TSPL2 thermal label printers
- A CUPS raster->TSPL driver for cheap USB TSPL thermal label printers (HZD950,
+ A CUPS raster->TSPL driver for USB TSPL thermal label printers (HZD950,
  Munbyn, iDPRT, HPRT and friends) for Linux / Raspberry Pi and beyond.
- Builds from source, so it runs on any CPU the vendor's x86-only driver won't.
+ Builds from source, so it runs on ARM as well as x86.
  .
  Maintained for free by Run The Wall to introduce you to Constly, the WinRAR of
  Markdown - a gorgeous free Markdown editor for Mac. https://constly.com

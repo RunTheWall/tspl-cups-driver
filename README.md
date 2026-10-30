@@ -6,10 +6,10 @@
 <h1 align="center">tspl-cups-driver</h1>
 
 <p align="center">
-  <b>A free, open-source CUPS driver for cheap USB thermal label printers that speak TSPL/TSPL2.</b><br>
+  <b>A free, open-source CUPS driver for USB thermal label printers that speak TSPL/TSPL2.</b><br>
   Turn a USB-tethered label printer into a <b>shared network printer for every device</b> —
   Mac, iPhone, Windows, Linux — driverless.<br>
-  Runs on <b>Linux &amp; Raspberry Pi (arm64 / armhf)</b>, the platforms the vendor drivers leave out.
+  Runs on <b>Linux &amp; Raspberry Pi (arm64 / armhf)</b>, so the printer you already own works there too.
 </p>
 
 <p align="center">
@@ -38,8 +38,8 @@
 
 ## Supported printers
 
-Cheap 4×6 USB label printers mostly speak the **same TSPL/TSPL2** language and mostly lack an ARM/Linux
-driver — so one driver covers them. We can only physically test the printers we own, so support is graded
+Most 4×6 USB label printers speak the **same TSPL/TSPL2** language, so one driver covers them on Linux
+and ARM. We can only physically test the printers we own, so support is graded
 honestly:
 
 **✅ Confirmed working** (verified on real hardware): **HZD950-PRO / HERO** (our bench unit), plus
@@ -190,7 +190,7 @@ Loaded **black-mark or continuous stock** instead of die-cut labels? Set it per 
 `-o MediaTracking=BlackMark` or `Continuous` — sending the default gap-sensor command to gapless
 media makes the printer hunt for a gap and error out. And after any media change, run the printer's
 **hold-the-feed-button calibration** and make sure the queue's page size matches the physical labels:
-TSPL firmwares skip or garble labels when `SIZE` disagrees with the stock. Note `PrinterDefault`
+labels come out skipped or misplaced when `SIZE` disagrees with the stock. Note `PrinterDefault`
 sends no boundary command at all — and GAP/BLINE **persist in printer memory**, so such a queue
 inherits whatever the last job set (e.g. `GAP 0` from a Continuous queue sharing the printer).
 
@@ -251,9 +251,9 @@ your app ─► CUPS ─► gstoraster ─► rastertotspl ─► TSPL ─► ts
   per-model font quirks).
 - **`tspl`** (shell backend) writes the TSPL straight to the printer's `usblp` device, located **by USB
   id/serial** so it survives reboots and coexists with other USB printers. It **spools the whole job,
-  then writes it in one burst**: byte-capture testing on the HZD950-PRO proved these firmwares silently
-  drop data that trickles in while the printer is already printing — drivers that stream at render
-  speed lose **every page after the first** on multi-copy and multi-page jobs.
+  then writes it in one burst**: byte-capture testing on our bench printer showed that TSPL printers expect
+  each job in one piece, so drivers that stream it at render speed can lose **every page after the
+  first** on multi-copy and multi-page jobs.
 
 **Build from source:** needs `gcc`, `make`, CUPS dev headers (`sudo apt install build-essential libcups2-dev`,
 or the dnf/pacman/zypper equivalent), then `make`.
@@ -271,9 +271,9 @@ drivers work for years yet. Reverse-engineered cleanly from the printer's own TS
 is redistributed.
 
 **Coming from another driver where 2 copies printed 1 label, or a multi-page PDF stopped after page
-one?** That's the mid-print data loss described above — cheap TSPL firmwares eat pages that arrive
-while the printer is busy, and most drivers (including vendor ones) stream. This driver spools since
-v1.3.1, so all pages print. If you still see missing pages *here*, that's a bug we want:
+one?** That's the mid-print data loss described above: TSPL printers expect the whole job in one piece,
+and a driver that streams it can lose pages. This driver spools since v1.3.1, so all pages print.
+If you still see missing pages *here*, that's a bug we want:
 [report it](https://github.com/RunTheWall/tspl-cups-driver/issues/new?template=bug.yml) with your model.
 </details>
 

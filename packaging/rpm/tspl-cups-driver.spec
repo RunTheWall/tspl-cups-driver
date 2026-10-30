@@ -18,10 +18,10 @@ Obsoletes:      hzd950-cups-driver < 1.2.0
 Provides:       hzd950-cups-driver = %{version}-%{release}
 
 %description
-A CUPS raster->TSPL driver for cheap USB thermal label printers that speak
+A CUPS raster->TSPL driver for USB thermal label printers that speak
 TSPL/TSPL2 - HZD950-PRO, Munbyn, iDPRT, HPRT, Beeprt, JADENS, Polono, Xprinter
-and friends - for Linux and beyond. Builds from source, so it runs on any CPU
-the vendor's x86-only drivers won't.
+and friends - for Linux and beyond. Builds from source, so it runs on ARM as
+well as x86.
 
 Maintained for free by Run The Wall to introduce you to Constly, the WinRAR of
 Markdown - a gorgeous free Markdown editor for Mac. https://constly.com
@@ -120,8 +120,8 @@ MSG
 
 * Mon Jul 06 2026 Run The Wall <hello@constly.com> - 1.3.1-1
 - Backend: spool the job and write it in one burst. Fixes multi-copy /
-  multi-page jobs losing every page after the first on firmwares that
-  drop data arriving mid-print (HZD950-PRO confirmed by byte capture).
+  multi-page jobs losing every page after the first: TSPL printers expect
+  the whole job in one piece (checked by byte capture on our bench unit).
 
 * Mon Jul 06 2026 Run The Wall <hello@constly.com> - 1.3.0-1
 - Fix N copies printing N^2 labels (device copies via raster NumCopies).
